@@ -46,6 +46,7 @@
 #include <time.h>
 #include <string.h>
 #include <strings.h>
+#include <stdbool.h>
 /*---------------------------------------------------------------------------*/
 #define LOG_MODULE "mqtt-client-bath-float"
 #ifdef MQTT_CLIENT_CONF_LOG_LEVEL
@@ -122,9 +123,8 @@ PROCESS(mqtt_client_process, "MQTT Client-bath-float");
 // static int level = 50;
 // static bool charge = false;
 // static bool danger = false;
-unsigned short varLevel;
-static bool started = false;
-static bool stopped = false;
+
+static bool on_off = false;
 
 static int temperatura = 20;
 
@@ -173,13 +173,11 @@ pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk, uint16_
     {
         LOG_INFO("SENSORE ATTIVO\n");
         // rgb_led_set(RGB_LED_GREEN);
-        started = true;
-        stopped = false;
+        on_off = true;
     } else if(strcmp((const char*) chunk, "stop") == 0) 
     {
       LOG_INFO("SENSORE STOPPATO\n");
-      stopped = true;
-      started = false;
+      on_off = false;
     }
     else
     {
@@ -292,7 +290,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
 			  state = STATE_CONNECTING;
 		  }
 		  
-		  if(state==STATE_CONNECTED){
+		  if(state == STATE_CONNECTED){
 			  // Subscribe to a topic
 			  strcpy(sub_topic,"actuator_bathFloat");
 			  status = mqtt_subscribe(&conn, NULL, sub_topic, MQTT_QOS_LEVEL_0);
@@ -305,7 +303,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
 			  state = STATE_SUBSCRIBED;
 		  }
  
-      if(state == STATE_SUBSCRIBED && started){
+      if(state == STATE_SUBSCRIBED && on_off){
         // Publish something
         sprintf(pub_topic, "%s", "status");
 
@@ -338,14 +336,14 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
         // rgb_led_set(RGB_LED_GREEN);
         // sprintf(app_buffer, "{\"node\": %d, \"level\": %d}", node_id,level);
         sprintf(app_buffer, "{\"node\": %d, \"temperatura\": %d}\n", node_id,temperatura);
+        printf("Ciao: %s", app_buffer);
 
-        mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer,
-        strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
+        mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer, strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
       
       } else if ( state == STATE_DISCONNECTED ){
         LOG_ERR("Disconnected form MQTT broker\n");	
         // rgb_led_set(RGB_LED_RED);
-        started= false;
+        on_off = false;
         // Recover from error
         state = STATE_INIT;
       }
