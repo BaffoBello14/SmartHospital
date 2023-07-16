@@ -1,33 +1,3 @@
-/*
- * Copyright (c) 2020, Carlo Vallati, University of Pisa
-  * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the copyright holder nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
- * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-/*---------------------------------------------------------------------------*/
 #include "contiki.h"
 #include "net/routing/routing.h"
 #include "mqtt.h"
@@ -61,10 +31,10 @@
 
 static const char *broker_ip = MQTT_CLIENT_BROKER_IP_ADDR;
 
-// Defaukt config values
+// Default config values
 #define DEFAULT_BROKER_PORT         1883
 #define DEFAULT_PUBLISH_INTERVAL    (30 * CLOCK_SECOND)
-#define PUBLISH_INTERVAL	    (4 * CLOCK_SECOND)
+#define PUBLISH_INTERVAL            (4 * CLOCK_SECOND)
 
 
 // We assume that the broker does not require authentication
@@ -74,12 +44,12 @@ static const char *broker_ip = MQTT_CLIENT_BROKER_IP_ADDR;
 /* Various states */
 static uint8_t state;
 
-#define STATE_INIT    		  0
-#define STATE_NET_OK    	  1
-#define STATE_CONNECTING      2
-#define STATE_CONNECTED       3
-#define STATE_SUBSCRIBED      4
-#define STATE_DISCONNECTED    5
+#define STATE_INIT                0
+#define STATE_NET_OK              1
+#define STATE_CONNECTING          2
+#define STATE_CONNECTED           3
+#define STATE_SUBSCRIBED          4
+#define STATE_DISCONNECTED        5
 
 /*---------------------------------------------------------------------------*/
 PROCESS_NAME(mqtt_client_process);
@@ -126,18 +96,18 @@ PROCESS(mqtt_client_process, "MQTT Client-bath-float");
 
 static bool on_off = false;
 
-static int temperatura = 20;
+static int heartbeat = 80;  // Initial heartbeat value
 
-int generateRandomTemperature(int input) {
+int generateRandomHeartbeat(int input) {
     // Define the range
-    int range = 2;
+    int range = 70;
     
-    // Calculate the minimum and maximum temperature values
-    int min_temp = input - range;
-    int max_temp = input + range;
+    // Calculate the minimum and maximum heartbeat values
+    int min_heartbeat = input - range;
+    int max_heartbeat = input + range;
     
-    // Generate a random temperature within the range
-    int output = (rand() % (max_temp - min_temp + 1)) + min_temp;
+    // Generate a random heartbeat within the range
+    int output = (rand() % (max_heartbeat - min_heartbeat + 1)) + min_heartbeat;
     
     return output;
 }
@@ -148,44 +118,23 @@ pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk, uint16_
   printf("Pub Handler: topic='%s' (len=%u), chunk_len=%u\n", topic, topic_len, chunk_len);
   if(strcmp(topic, "actuator_bathFloat") == 0) {
     printf("Received Actuator command\n");
-    /*
     if(strcmp((const char*) chunk, "start") == 0) 
     {
-        LOG_INFO("SENSORE ATTIVO\n");
-        // rgb_led_set(RGB_LED_GREEN);
-        started = true;
-    } else if(strcmp((const char*) chunk, "charge") == 0) 
-    {
-      LOG_INFO("POSSIBLE PERICOLO\n");
-      charge = true;
-    }
-    else if(strcmp((const char*) chunk, "stop") == 0)  {
-      LOG_INFO("SENSORE STOPPATO\n");	
-      charge = false;
-      danger = false;
-    }	
-    else if(strcmp((const char*) chunk, "danger") == 0)  {
-      LOG_INFO("PERICOLO\n");	
-      danger = true;
-    }
-    */
-   if(strcmp((const char*) chunk, "start") == 0) 
-    {
-        LOG_INFO("SENSORE ATTIVO\n");
+        LOG_INFO("SENSOR ACTIVE\n");
         // rgb_led_set(RGB_LED_GREEN);
         on_off = true;
     } else if(strcmp((const char*) chunk, "stop") == 0) 
     {
-      LOG_INFO("SENSORE STOPPATO\n");
+      LOG_INFO("SENSOR STOPPED\n");
       on_off = false;
     }
     else
     {
-      LOG_INFO("COMANDO NON RICONOSCIUTO!\nCOMANDI POSSIBILI: 'start' oppure 'stop'");
+      LOG_INFO("UNRECOGNIZED COMMAND!\nPOSSIBLE COMMANDS: 'start' or 'stop'");
     }
   }
   else {
-    LOG_ERR("TOPIC NON VALIDO!\nTOPIC VALIDI: start, stop");
+    LOG_ERR("INVALID TOPIC!\nVALID TOPICS: start, stop");
   }
 }
 /*---------------------------------------------------------------------------*/
@@ -231,7 +180,7 @@ mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
     break;
   }
   default:
-    printf("Application got a unhandled MQTT event: %i\n", event);
+    printf("Application got an unhandled MQTT event: %i\n", event);
     break;
   }
 }
@@ -262,11 +211,11 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
                      linkaddr_node_addr.u8[2], linkaddr_node_addr.u8[5],
                      linkaddr_node_addr.u8[6], linkaddr_node_addr.u8[7]);
 
-  // Broker registration					 
+  // Broker registration                     
   mqtt_register(&conn, &mqtt_client_process, client_id, mqtt_event,
                   MAX_TCP_SEGMENT_SIZE);
   state=STATE_INIT;
-				    
+                    
   // Initialize periodic timer to check the status 
   etimer_set(&periodic_timer, PUBLISH_INTERVAL);
   etimer_set(&reset_timer, CLOCK_SECOND);
@@ -277,78 +226,54 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
     PROCESS_YIELD();
 
     if((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || ev == PROCESS_EVENT_POLL){
-			  			  
-		  if(state==STATE_INIT && have_connectivity()){
-				 state = STATE_NET_OK;
-		  } 
-		  
-		  if(state == STATE_NET_OK){
-			  // Connect to MQTT server
-			  printf("Connecting!\n");
-			  memcpy(broker_address, broker_ip, strlen(broker_ip));
-			  mqtt_connect(&conn, broker_address, DEFAULT_BROKER_PORT, (PUBLISH_INTERVAL * 3) / CLOCK_SECOND, MQTT_CLEAN_SESSION_ON);
-			  state = STATE_CONNECTING;
-		  }
-		  
-		  if(state == STATE_CONNECTED){
-			  // Subscribe to a topic
-			  strcpy(sub_topic,"actuator_bathFloat");
-			  status = mqtt_subscribe(&conn, NULL, sub_topic, MQTT_QOS_LEVEL_0);
-			  printf("Subscribing!\n");
-			  if(status == MQTT_STATUS_OUT_QUEUE_FULL) {
-				LOG_ERR("Tried to subscribe but command queue was full!\n");
-				PROCESS_EXIT();
-			  }
+                          
+      if(state==STATE_INIT && have_connectivity()){
+         state = STATE_NET_OK;
+      } 
+      
+      if(state == STATE_NET_OK){
+        // Connect to MQTT server
+        printf("Connecting!\n");
+        memcpy(broker_address, broker_ip, strlen(broker_ip));
+        mqtt_connect(&conn, broker_address, DEFAULT_BROKER_PORT, (PUBLISH_INTERVAL * 3) / CLOCK_SECOND, MQTT_CLEAN_SESSION_ON);
+        state = STATE_CONNECTING;
+      }
+      
+      if(state == STATE_CONNECTED){
+        // Subscribe to a topic
+        strcpy(sub_topic,"actuator_bathFloat");
+        status = mqtt_subscribe(&conn, NULL, sub_topic, MQTT_QOS_LEVEL_0);
+        printf("Subscribing!\n");
+        if(status == MQTT_STATUS_OUT_QUEUE_FULL) {
+          LOG_ERR("Tried to subscribe but command queue was full!\n");
+          PROCESS_EXIT();
+        }
 
-			  state = STATE_SUBSCRIBED;
-		  }
- 
+        state = STATE_SUBSCRIBED;
+      }
+
       if(state == STATE_SUBSCRIBED && on_off){
         // Publish something
         sprintf(pub_topic, "%s", "status");
 
-        temperatura = generateRandomTemperature(temperatura);
+        heartbeat = generateRandomHeartbeat(heartbeat);
 
-        // sprintf(app_buffer, "Temperatura: %d", temperatura);
+        // sprintf(app_buffer, "Heartbeat: %d", heartbeat);
 
-        // printf("TEMPERATURA: %d\n", temperatura);
+        // printf("HEARTBEAT: %d\n", heartbeat);
 
-        /*
-        if(charge) 
-        {
-          // Siamo in possibile pericolo
-          printf("TEMPERATURA: %d", temperatura);
-          sprintf(pub_topic, "%s", "POSSIBILE PERICOLO");
-          printf("POSSIBILE PERICOLO");
-          sprintf(pub_topic, "%d", temperatura);
-        }
-        
-        if(danger) 
-        {
-          printf("TEMPERATURA: %d", temperatura);
-          sprintf(pub_topic, "%s", "POSSIBILE PERICOLO");
-          printf("POSSIBILE PERICOLO");
-          sprintf(pub_topic, "%d", temperatura);
-        }
-        */
-        
-        // LOG_INFO("New values: %d\n", level);
-        // rgb_led_set(RGB_LED_GREEN);
-        // sprintf(app_buffer, "{\"node\": %d, \"level\": %d}", node_id,level);
-        sprintf(app_buffer, "node: %d, temperatura: %d\n", node_id, temperatura);
-        printf("Ciao, ecco le info: %s", app_buffer);
+        sprintf(app_buffer, "node: %d, heartbeat: %d\n", node_id, heartbeat);
+        printf("Hello, here are the info: %s", app_buffer);
 
         mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer, strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
-      
-      } else if ( state == STATE_DISCONNECTED ){
-        LOG_ERR("Disconnected form MQTT broker\n");	
-        // rgb_led_set(RGB_LED_RED);
+      } else if (state == STATE_DISCONNECTED){
+        LOG_ERR("Disconnected from MQTT broker\n");  
         on_off = false;
         // Recover from error
         state = STATE_INIT;
       }
-		
-		  etimer_set(&periodic_timer, PUBLISH_INTERVAL);
+      
+      etimer_set(&periodic_timer, PUBLISH_INTERVAL);
     }
 
     if(ev == PROCESS_EVENT_TIMER && data == &reset_timer) {
@@ -359,4 +284,3 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
 
   PROCESS_END();
 }
-/*---------------------------------------------------------------------------*/
