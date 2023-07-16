@@ -335,8 +335,8 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
         // LOG_INFO("New values: %d\n", level);
         // rgb_led_set(RGB_LED_GREEN);
         // sprintf(app_buffer, "{\"node\": %d, \"level\": %d}", node_id,level);
-        sprintf(app_buffer, "{\"node\": %d, \"temperatura\": %d}\n", node_id,temperatura);
-        printf("Ciao: %s", app_buffer);
+        sprintf(app_buffer, "node: %d, temperatura: %d\n", node_id, temperatura);
+        printf("Ciao, ecco le info: %s", app_buffer);
 
         mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer, strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
       
