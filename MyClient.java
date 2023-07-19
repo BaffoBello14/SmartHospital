@@ -1,17 +1,16 @@
 package coapclient.unipi.it;
 
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
-import java.sql.*;
 
 public class MyClient implements MqttCallback {
 	
@@ -123,80 +122,54 @@ public class MyClient implements MqttCallback {
 	}
 
 	
-	public void messageArrived(String topic, MqttMessage message) throws Exception 
-	{
-		// TODO Auto-generated method stub
-		System.out.println("SEI DENTRO LA MESSAGGE ARRIVED! MESSAGGIO ARRIVATO!\n");
-		System.out.println("TOPIC RICEVUTO: " + topic + "\n");
-		if (topic.equals(OXYGEN_TOPIC)) 
-		{
-            // float oxygenLevel = Float.parseFloat(message.toString());
-            // handleOxygenLevel(oxygenLevel);
-			int oxygenLevel = Integer.parseInt(message.toString());
-			System.out.println("HO RICEVUTO OSSIGENO : "+ oxygenLevel + "\n");
-			handleOxygenLevel(oxygenLevel);
-        } 
-		else if (topic.equals(HEARTBEAT_TOPIC)) 
-		{
+	public void messageArrived(String topic, MqttMessage message) throws Exception {
+        System.out.println("SEI DENTRO LA MESSAGGE ARRIVED! MESSAGGIO ARRIVATO!\n");
+        System.out.println("TOPIC RICEVUTO: " + topic + "\n");
+        if (topic.equals(OXYGEN_TOPIC)) {
+            int oxygenLevel = Integer.parseInt(message.toString());
+            System.out.println("HO RICEVUTO OSSIGENO : " + oxygenLevel + "\n");
+            handleOxygenLevel(oxygenLevel);
+
+            // Esegui una query per inserire il valore di ossigeno nel database "iot"
+            try (Connection connection = DriverManager.getConnection(DatabaseConnection.getInstance().getDbUrl(),
+                    DatabaseConnection.getInstance().getUsername(), DatabaseConnection.getInstance().getPassword())) {
+                String sql = "INSERT INTO oxygen_data (oxygen_level) VALUES (" + oxygenLevel + ")";
+                try (Statement statement = connection.createStatement()) {
+                    statement.executeUpdate(sql);
+                }
+            } catch (SQLException e) {
+                System.err.println("Errore durante l'inserimento dei dati nel database: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else if (topic.equals(HEARTBEAT_TOPIC)) {
             int heartbeat = Integer.parseInt(message.toString());
-            System.out.println("HO RICEVUTO BATTITO : "+ heartbeat + "\n");
+            System.out.println("HO RICEVUTO BATTITO : " + heartbeat + "\n");
             handleHeartbeat(heartbeat);
-        }
-		else
-		{
-			System.out.println("MESSAGGIO NON RICONOSCIUTO! USARE ossigeno O battito\n");
-		}
-	}
-		
-	/*
-	public void messageArrived(String topic, MqttMessage message) throws Exception 
-	{
-		// TODO Auto-generated method stub
-		System.out.println("SEI DENTRO LA MESSAGGE ARRIVED! MESSAGGIO ARRIVATO!\n");
-		System.out.println("TOPIC RICEVUTO: " + topic + "\n");
-		
-		JSONObject obj;
-        JSONParser parser = new JSONParser();
-        
-        try 
-        {
-        	String data = new String(message.getPayload(), StandardCharsets.UTF_8);
-        	obj = (JSONObject) parser.parse(data);
 
-        } 
-        catch (ParseException e) {
-        	throw new RuntimeException(e);
+            // Esegui una query per inserire il valore del battito cardiaco nel database "iot"
+            try (Connection connection = DriverManager.getConnection(DatabaseConnection.getInstance().getDbUrl(),
+                    DatabaseConnection.getInstance().getUsername(), DatabaseConnection.getInstance().getPassword())) {
+                String sql = "INSERT INTO heartbeat_data (heartbeat) VALUES (" + heartbeat + ")";
+                try (Statement statement = connection.createStatement()) {
+                    statement.executeUpdate(sql);
+                }
+            } catch (SQLException e) {
+                System.err.println("Errore durante l'inserimento dei dati nel database: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("MESSAGGIO NON RICONOSCIUTO! USARE ossigeno O battito\n");
         }
-
-        try
-        {
-        	int modified = DatabaseAccess.insertData((Long) obj.get("value"), topic);  //using Long since JSON parser
-        	if (modified < 1)
-        	{
-        		System.err.println("DataBase error: could not insert new data");
-        	}
-        }catch (SQLException e)
-        {
-        	System.err.println("DataBase error: cannot connect");
-        }
-        
-	}
-	*/
-	
-	public static void main(String[] args) 
-	{
-		// creo, setcallback, connect, subscribe
-		System.out.println("SIAMO NEL MAIN! ADESSO SI AVVIERA LA CONNECT-TO-BROKER\n");
-		// Creo l'istanza
-        MqttClient mqttClient = connectToBroker();
-        
-        System.out.println("CONNECT-TO-BROKER FATTA\n");
-        System.out.println("ADESSO DEVO ISCRIVERMI AI TOPIC\n");
-        
-        subscribeToTopics(mqttClient);
-        
-        System.out.println("ISCRIZIONE AI TOPIC RIUSCITA\n");
     }
-	
 
+    public static void main(String[] args) {
+        // Creo l'istanza del singleton DatabaseConnection
+        DatabaseConnection dbConnection = DatabaseConnection.getInstance();
+
+        // Creo l'istanza
+        MqttClient mqttClient = connectToBroker();
+
+        // Aggiungo la connessione ai topic MQTT
+        subscribeToTopics(mqttClient);
+    }
 }
