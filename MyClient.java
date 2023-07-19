@@ -1,4 +1,4 @@
-package coapclient.unipi.it;
+package it.unipi.iot;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -131,8 +131,7 @@ public class MyClient implements MqttCallback {
             handleOxygenLevel(oxygenLevel);
 
             // Esegui una query per inserire il valore di ossigeno nel database "iot"
-            try (Connection connection = DriverManager.getConnection(DatabaseConnection.getInstance().getDbUrl(),
-                    DatabaseConnection.getInstance().getUsername(), DatabaseConnection.getInstance().getPassword())) {
+            try (Connection connection = DB.getDb()) {
                 String sql = "INSERT INTO oxygen_data (oxygen_level) VALUES (" + oxygenLevel + ")";
                 try (Statement statement = connection.createStatement()) {
                     statement.executeUpdate(sql);
@@ -147,8 +146,7 @@ public class MyClient implements MqttCallback {
             handleHeartbeat(heartbeat);
 
             // Esegui una query per inserire il valore del battito cardiaco nel database "iot"
-            try (Connection connection = DriverManager.getConnection(DatabaseConnection.getInstance().getDbUrl(),
-                    DatabaseConnection.getInstance().getUsername(), DatabaseConnection.getInstance().getPassword())) {
+            try (Connection connection = DB.getDb()) {
                 String sql = "INSERT INTO heartbeat_data (heartbeat) VALUES (" + heartbeat + ")";
                 try (Statement statement = connection.createStatement()) {
                     statement.executeUpdate(sql);
@@ -164,7 +162,7 @@ public class MyClient implements MqttCallback {
 
     public static void main(String[] args) {
         // Creo l'istanza del singleton DatabaseConnection
-        DatabaseConnection dbConnection = DatabaseConnection.getInstance();
+        DB.getDb(); // Questo assicura che la connessione al database venga stabilita una volta sola.
 
         // Creo l'istanza
         MqttClient mqttClient = connectToBroker();
