@@ -1,7 +1,10 @@
-package it.unipi.iot;
+package it.unipi.iot.cloudApplication;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
+import it.unipi.iot.DB;
+
 import org.eclipse.paho.client.mqttv3.*;
 
 import java.nio.charset.StandardCharsets;
@@ -114,7 +117,6 @@ public class MQTT_Collector implements MqttCallback {
                     // oxygen value retrieve
                     float oxygenLevel = jsonPayload.get("value").getAsFloat();
                     //setPillDispenserStatus(sensorId, topic, oxygenLevel);
-                    // handleOxygenLevel(sensorId, oxygenLevel);
                     
                     // Insert data into the database
                     try (Connection connection = DB.getDb()) 

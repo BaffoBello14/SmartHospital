@@ -39,31 +39,6 @@ public class MQTT_Collector implements MqttCallback {
         }
     }
 
-    // Metodo privato per gestire lo stato del dispenser di pillole
-    private void setPillDispenserStatus(String sensorId, String sensorType, float value) {
-        // Logica per impostare lo stato del dispenser di pillole
-        // Puoi aggiornare una variabile, chiamare un metodo o eseguire altre azioni necessarie
-        System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status);
-        // A partire da questo punto, l'ossigeno e le pulsazioni devono diminuire
-
-        // Esempio di gestione dei dati in base al tipo di sensore
-        if (sensorType.equals(OXYGEN_TOPIC)) {
-            if (value <= OXYGEN_THRESHOLD) {
-                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE OSSIGENO VALE:" + value);
-            }
-        }
-        if (sensorType.equals(HEARTBEAT_TOPIC)) {
-            if (value >= HEARTBEAT_THRESHOLD) {
-                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE HB VALE:" + value);
-            }
-        }
-        if (sensorType.equals(TEMPERATURE_THRESHOLD)) {
-            if (value <= TEMPERATURE_THRESHOLD) {
-                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE TEMPE VALE:" + value);
-            }
-        }
-    }
-
     public void connectionLost(Throwable throwable) {
         System.out.println("CONNECTION LOST");
         throwable.printStackTrace();
@@ -90,9 +65,6 @@ public class MQTT_Collector implements MqttCallback {
 
                 if (topic.equals(OXYGEN_TOPIC)) {
                     float oxygenLevel = jsonPayload.get("value").getAsFloat();
-                    // Chiamata al metodo privato per gestire l'ossigeno
-                    setPillDispenserStatus(sensorId, topic, oxygenLevel);
-
                     // Inserimento dei dati nel database
                     try (Connection connection = DB.getDb()) {
                         String sql = "INSERT INTO oxygen_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + oxygenLevel + ")";
@@ -105,8 +77,6 @@ public class MQTT_Collector implements MqttCallback {
                     }
                 } else if (topic.equals(HEARTBEAT_TOPIC)) {
                     int heartbeat = jsonPayload.get("value").getAsInt();
-                    // Chiamata al metodo privato per gestire le pulsazioni
-
                     // Inserimento dei dati nel database
                     try (Connection connection = DB.getDb()) {
                         String sql = "INSERT INTO heartbeat_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + heartbeat + ")";
@@ -119,8 +89,6 @@ public class MQTT_Collector implements MqttCallback {
                     }
                 } else if (topic.equals(TEMPERATURE_TOPIC)) {
                     float temperature = jsonPayload.get("value").getAsFloat();
-                    // Chiamata al metodo privato per gestire la temperatura
-
                     // Inserimento dei dati nel database
                     try (Connection connection = DB.getDb()) {
                         String sql = "INSERT INTO temperature_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + temperature + ")";
