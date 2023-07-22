@@ -15,9 +15,10 @@ public class MQTT_Collector implements MqttCallback {
     private static final String OXYGEN_TOPIC = "ossigeno";
     private static final String HEARTBEAT_TOPIC = "battito";
     private static final String TEMPERATURE_TOPIC = "temperatura";
-    private static final int HEARTBEAT_THRESHOLD = 70;
+    // Danger threshold
+    /*private static final int HEARTBEAT_THRESHOLD = 60;
     private static final int OXYGEN_THRESHOLD = 80;
-    private static final double TEMPERATURE_THRESHOLD = 35.5;
+    private static final double TEMPERATURE_THRESHOLD = 35.5;*/
 
     private static MqttClient connectToBroker() {
         String clientId = "tcp://127.0.0.1:1883";
@@ -35,52 +36,48 @@ public class MQTT_Collector implements MqttCallback {
         return null;
     }
 
-    private static void subscribeToTopics(MqttClient mqttClient) {
-        try {
+    private static void subscribeToTopics(MqttClient mqttClient) 
+    {
+        try 
+        {
             mqttClient.subscribe(OXYGEN_TOPIC);
             mqttClient.subscribe(HEARTBEAT_TOPIC);
             mqttClient.subscribe(TEMPERATURE_TOPIC);
-        } catch (MqttException e) {
+        } 
+        catch (MqttException e) 
+        {
             e.printStackTrace();
         }
     }
 
-    private void handleOxygenLevel(String sensorId, float oxygenLevel) {
-        // Logic to handle oxygen level
-        // Determine pill dispenser status based on oxygen level
-        if (oxygenLevel < OXYGEN_THRESHOLD) {
-            setPillDispenserStatus(sensorId, "APERTA");
-        } else {
-            setPillDispenserStatus(sensorId, "CHIUSA");
-        }
-    }
-
-    private void handleHeartbeat(String sensorId, int heartbeat) {
-        // Logic to handle heartbeat
-        // Determine pill dispenser status based on heartbeat
-        if (heartbeat > HEARTBEAT_THRESHOLD) {
-            setPillDispenserStatus(sensorId, "APERTA");
-        } else {
-            setPillDispenserStatus(sensorId, "CHIUSA");
-        }
-    }
-
-    private void handleTemperature(String sensorId, double temperature) {
-        // Logic to handle temperature
-        // Determine pill dispenser status based on temperature
-        if (temperature > TEMPERATURE_THRESHOLD) {
-            setPillDispenserStatus(sensorId, "APERTA");
-        } else {
-            setPillDispenserStatus(sensorId, "CHIUSA");
-        }
-    }
-
-    private void setPillDispenserStatus(String sensorId, String status) {
+    /*private void setPillDispenserStatus(String sensorId, String sensorType, float value) {
         // Logic to set the pill dispenser status
         // You can update a variable, call a method, or perform any necessary actions
         System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status);
         // From this point, oxygen and heartbeat must decrease
-    }
+        
+        if(sensorType.equals(OXYGEN_TOPIC))
+        {
+            if(value<=OXYGEN_THRESHOLD)
+            {
+                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE OSSIGENO VALE:"+value);
+            }
+        }
+        if(sensorType.equals(HEARTBEAT_TOPIC))
+        {
+            if(value>=HEARTBEAT_THRESHOLD)
+            {
+                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE HB VALE:"+value);
+            }
+        }
+        if(sensorType.equals(TEMPERATURE_THRESHOLD))
+        {
+            if(value<=TEMPERATURE_THRESHOLD)
+            {
+                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE TEMPE VALE:"+value);
+            }
+        }
+    }*/
 
     public void connectionLost(Throwable throwable) {
         System.out.println("CONNECTION LOST");
@@ -94,22 +91,37 @@ public class MQTT_Collector implements MqttCallback {
     }
 
     public void messageArrived(String topic, MqttMessage message) throws Exception {
+        // mqtt_pub -h HOST_ID -t TOPIC -m MSG
+
+        // MSG = id=sender_id value=sensor_value
         System.out.println("MESSAGE ARRIVED - Topic: " + topic + ", Payload: " + message);
 
-        if (topic.equals(OXYGEN_TOPIC) || topic.equals(HEARTBEAT_TOPIC) || topic.equals(TEMPERATURE_TOPIC)) {
-            try {
+        // Topic name control 
+        if (topic.equals(OXYGEN_TOPIC) || topic.equals(HEARTBEAT_TOPIC) || topic.equals(TEMPERATURE_TOPIC)) 
+        {
+            try 
+            {
+                // Payload retrieve from input args
+                // CONTROLLARE L'UTILITA DEL SECONDO ARGOMENTO
+                // Essendo mqtt msg, need serializzazione con il secondo argomento
                 String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
+                // String parsing from String to Json obj
                 JsonObject jsonPayload = JsonParser.parseString(payload).getAsJsonObject();
+                // sender_id retrieve
                 String sensorId = jsonPayload.get("id").getAsString();
 
                 if (topic.equals(OXYGEN_TOPIC)) {
+                    // oxygen value retrieve
                     float oxygenLevel = jsonPayload.get("value").getAsFloat();
-                    handleOxygenLevel(sensorId, oxygenLevel);
+                    //setPillDispenserStatus(sensorId, topic, oxygenLevel);
+                    // handleOxygenLevel(sensorId, oxygenLevel);
                     
                     // Insert data into the database
-                    try (Connection connection = DB.getDb()) {
+                    try (Connection connection = DB.getDb()) 
+                    {
                         String sql = "INSERT INTO oxygen_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + oxygenLevel + ")";
-                        try (Statement statement = connection.createStatement()) {
+                        try (Statement statement = connection.createStatement()) 
+                        {
                             statement.executeUpdate(sql);
                         }
                     } catch (SQLException e) {
@@ -118,7 +130,7 @@ public class MQTT_Collector implements MqttCallback {
                     }
                 } else if (topic.equals(HEARTBEAT_TOPIC)) {
                     int heartbeat = jsonPayload.get("value").getAsInt();
-                    handleHeartbeat(sensorId, heartbeat);
+                    //setPillDispenserStatus(sensorId, topic, heartbeat);
                     
                     // Insert data into the database
                     try (Connection connection = DB.getDb()) {
@@ -131,8 +143,8 @@ public class MQTT_Collector implements MqttCallback {
                         e.printStackTrace();
                     }
                 } else if (topic.equals(TEMPERATURE_TOPIC)) {
-                    double temperature = jsonPayload.get("value").getAsDouble();
-                    handleTemperature(sensorId, temperature);
+                    float temperature = jsonPayload.get("value").getAsFloat();
+                    //setPillDispenserStatus(sensorId, topic, temperature);
                     
                     // Insert data into the database
                     try (Connection connection = DB.getDb()) {

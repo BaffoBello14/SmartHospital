@@ -15,66 +15,51 @@ public class MQTT_Collector implements MqttCallback {
     private static final String OXYGEN_TOPIC = "ossigeno";
     private static final String HEARTBEAT_TOPIC = "battito";
     private static final String TEMPERATURE_TOPIC = "temperatura";
-    // Danger threshold
-    private static final int HEARTBEAT_THRESHOLD = 60;
-    private static final int OXYGEN_THRESHOLD = 80;
-    private static final double TEMPERATURE_THRESHOLD = 35.5;
 
     private static MqttClient connectToBroker() {
         String clientId = "tcp://127.0.0.1:1883";
-        try 
-        {
+        try {
             MqttClient mqttClient = new MqttClient(MQTT_BROKER, clientId);
             mqttClient.setCallback(new MyClient());
             mqttClient.connect();
             return mqttClient;
-        } 
-        catch (MqttException e) 
-        {
+        } catch (MqttException e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    private static void subscribeToTopics(MqttClient mqttClient) 
-    {
-        try 
-        {
+    private static void subscribeToTopics(MqttClient mqttClient) {
+        try {
             mqttClient.subscribe(OXYGEN_TOPIC);
             mqttClient.subscribe(HEARTBEAT_TOPIC);
             mqttClient.subscribe(TEMPERATURE_TOPIC);
-        } 
-        catch (MqttException e) 
-        {
+        } catch (MqttException e) {
             e.printStackTrace();
         }
     }
 
+    // Metodo privato per gestire lo stato del dispenser di pillole
     private void setPillDispenserStatus(String sensorId, String sensorType, float value) {
-        // Logic to set the pill dispenser status
-        // You can update a variable, call a method, or perform any necessary actions
+        // Logica per impostare lo stato del dispenser di pillole
+        // Puoi aggiornare una variabile, chiamare un metodo o eseguire altre azioni necessarie
         System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status);
-        // From this point, oxygen and heartbeat must decrease
-        
-        if(sensorType.equals(OXYGEN_TOPIC))
-        {
-            if(value<=OXYGEN_THRESHOLD)
-            {
-                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE OSSIGENO VALE:"+value);
+        // A partire da questo punto, l'ossigeno e le pulsazioni devono diminuire
+
+        // Esempio di gestione dei dati in base al tipo di sensore
+        if (sensorType.equals(OXYGEN_TOPIC)) {
+            if (value <= OXYGEN_THRESHOLD) {
+                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE OSSIGENO VALE:" + value);
             }
         }
-        if(sensorType.equals(HEARTBEAT_TOPIC))
-        {
-            if(value>=HEARTBEAT_THRESHOLD)
-            {
-                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE HB VALE:"+value);
+        if (sensorType.equals(HEARTBEAT_TOPIC)) {
+            if (value >= HEARTBEAT_THRESHOLD) {
+                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE HB VALE:" + value);
             }
         }
-        if(sensorType.equals(TEMPERATURE_THRESHOLD))
-        {
-            if(value<=TEMPERATURE_THRESHOLD)
-            {
-                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE TEMPE VALE:"+value);
+        if (sensorType.equals(TEMPERATURE_THRESHOLD)) {
+            if (value <= TEMPERATURE_THRESHOLD) {
+                System.out.println("SENSOR ID: " + sensorId + ", SCATOLA: " + status + "XCHE TEMPE VALE:" + value);
             }
         }
     }
@@ -84,44 +69,34 @@ public class MQTT_Collector implements MqttCallback {
         throwable.printStackTrace();
     }
 
-    public void deliveryComplete(IMqttDeliveryToken token) 
-    {
-        // Not used in this example
+    public void deliveryComplete(IMqttDeliveryToken token) {
+        // Non utilizzato in questo esempio
         System.out.print("DELIVERY COMPLETATA!\n");
     }
 
     public void messageArrived(String topic, MqttMessage message) throws Exception {
-        // mqtt_pub -h HOST_ID -t TOPIC -m MSG
-
         // MSG = id=sender_id value=sensor_value
         System.out.println("MESSAGE ARRIVED - Topic: " + topic + ", Payload: " + message);
 
-        // Topic name control 
-        if (topic.equals(OXYGEN_TOPIC) || topic.equals(HEARTBEAT_TOPIC) || topic.equals(TEMPERATURE_TOPIC)) 
-        {
-            try 
-            {
-                // Payload retrieve from input args
-                // CONTROLLARE L'UTILITA DEL SECONDO ARGOMENTO
-                // Essendo mqtt msg, need serializzazione con il secondo argomento
+        // Controllo del nome del topic
+        if (topic.equals(OXYGEN_TOPIC) || topic.equals(HEARTBEAT_TOPIC) || topic.equals(TEMPERATURE_TOPIC)) {
+            try {
+                // Estrazione del payload dai messaggi MQTT
                 String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
-                // String parsing from String to Json obj
+                // Conversione del payload da String a JsonObject
                 JsonObject jsonPayload = JsonParser.parseString(payload).getAsJsonObject();
-                // sender_id retrieve
+                // Estrazione dell'id del sensore dal payload
                 String sensorId = jsonPayload.get("id").getAsString();
 
                 if (topic.equals(OXYGEN_TOPIC)) {
-                    // oxygen value retrieve
                     float oxygenLevel = jsonPayload.get("value").getAsFloat();
+                    // Chiamata al metodo privato per gestire l'ossigeno
                     setPillDispenserStatus(sensorId, topic, oxygenLevel);
-                    // handleOxygenLevel(sensorId, oxygenLevel);
-                    
-                    // Insert data into the database
-                    try (Connection connection = DB.getDb()) 
-                    {
+
+                    // Inserimento dei dati nel database
+                    try (Connection connection = DB.getDb()) {
                         String sql = "INSERT INTO oxygen_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + oxygenLevel + ")";
-                        try (Statement statement = connection.createStatement()) 
-                        {
+                        try (Statement statement = connection.createStatement()) {
                             statement.executeUpdate(sql);
                         }
                     } catch (SQLException e) {
@@ -130,9 +105,9 @@ public class MQTT_Collector implements MqttCallback {
                     }
                 } else if (topic.equals(HEARTBEAT_TOPIC)) {
                     int heartbeat = jsonPayload.get("value").getAsInt();
-                    setPillDispenserStatus(sensorId, topic, heartbeat);
-                    
-                    // Insert data into the database
+                    // Chiamata al metodo privato per gestire le pulsazioni
+
+                    // Inserimento dei dati nel database
                     try (Connection connection = DB.getDb()) {
                         String sql = "INSERT INTO heartbeat_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + heartbeat + ")";
                         try (Statement statement = connection.createStatement()) {
@@ -144,9 +119,9 @@ public class MQTT_Collector implements MqttCallback {
                     }
                 } else if (topic.equals(TEMPERATURE_TOPIC)) {
                     float temperature = jsonPayload.get("value").getAsFloat();
-                    setPillDispenserStatus(sensorId, topic, temperature);
-                    
-                    // Insert data into the database
+                    // Chiamata al metodo privato per gestire la temperatura
+
+                    // Inserimento dei dati nel database
                     try (Connection connection = DB.getDb()) {
                         String sql = "INSERT INTO temperature_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + temperature + ")";
                         try (Statement statement = connection.createStatement()) {
@@ -166,16 +141,12 @@ public class MQTT_Collector implements MqttCallback {
         }
     }
 
+    public static void main(String[] args) {
+        // Creazione dell'istanza singleton DatabaseConnection
+        DB.getDb();
 
-    public static void main(String[] args) 
-    {
-        // Create Singleton DatabaseConnection instance
-        DB.getDb(); // Questo assicura che la connessione al database venga stabilita una volta sola.
-
-        // Instance creation
+        // Creazione dell'istanza del client MQTT e sottoscrizione ai topic
         MqttClient mqttClient = connectToBroker();
-
-        // Mqtt connection added to topic
         subscribeToTopics(mqttClient);
     }
 }
