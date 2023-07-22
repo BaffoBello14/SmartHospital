@@ -3,6 +3,7 @@ package it.unipi.iot;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -120,7 +121,6 @@ public class MyClient implements MqttCallback {
 		System.out.println("SEI DENTRO LA DELIVERY COMPLETE!\n");
 		
 	}
-
 	
 	public void messageArrived(String topic, MqttMessage message) throws Exception {
         System.out.println("SEI DENTRO LA MESSAGGE ARRIVED! MESSAGGIO ARRIVATO!\n");
@@ -132,7 +132,7 @@ public class MyClient implements MqttCallback {
 
             // Esegui una query per inserire il valore di ossigeno nel database "iot"
             try (Connection connection = DB.getDb()) {
-                String sql = "INSERT INTO oxygen_data (oxygen_level) VALUES (" + oxygenLevel + ")";
+                String sql = "INSERT INTO oxygen_sensor (oxygen_level) VALUES (" + oxygenLevel + ")";
                 try (Statement statement = connection.createStatement()) {
                     statement.executeUpdate(sql);
                 }
@@ -147,7 +147,7 @@ public class MyClient implements MqttCallback {
 
             // Esegui una query per inserire il valore del battito cardiaco nel database "iot"
             try (Connection connection = DB.getDb()) {
-                String sql = "INSERT INTO heartbeat_data (heartbeat) VALUES (" + heartbeat + ")";
+                String sql = "INSERT INTO heartbeat_sensor (heartbeat) VALUES (" + heartbeat + ")";
                 try (Statement statement = connection.createStatement()) {
                     statement.executeUpdate(sql);
                 }
@@ -157,6 +157,22 @@ public class MyClient implements MqttCallback {
             }
         } else {
             System.out.println("MESSAGGIO NON RICONOSCIUTO! USARE ossigeno O battito\n");
+        }
+    }
+
+    // Metodo per registrare un attuatore nel database "iot"
+    public void registerActuator(String ip, String type) {
+        try (Connection connection = DB.getDb();
+             PreparedStatement statement = connection.prepareStatement(
+                     "REPLACE INTO `actuator`(`ip`, `type`) VALUES (?, ?)")) {
+
+            statement.setString(1, ip);
+            statement.setString(2, type);
+            statement.executeUpdate();
+
+        } catch (final SQLException e) {
+            e.printStackTrace();
+            System.err.println("Skipping insert....");
         }
     }
 
