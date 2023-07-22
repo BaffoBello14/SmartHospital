@@ -21,12 +21,15 @@ public class MQTT_Collector implements MqttCallback {
 
     private static MqttClient connectToBroker() {
         String clientId = "tcp://127.0.0.1:1883";
-        try {
+        try 
+        {
             MqttClient mqttClient = new MqttClient(MQTT_BROKER, clientId);
             mqttClient.setCallback(new MyClient());
             mqttClient.connect();
             return mqttClient;
-        } catch (MqttException e) {
+        } 
+        catch (MqttException e) 
+        {
             e.printStackTrace();
         }
         return null;
@@ -84,8 +87,10 @@ public class MQTT_Collector implements MqttCallback {
         throwable.printStackTrace();
     }
 
-    public void deliveryComplete(IMqttDeliveryToken token) {
+    public void deliveryComplete(IMqttDeliveryToken token) 
+    {
         // Not used in this example
+        System.out.print("DELIVERY COMPLETATA!\n");
     }
 
     public void messageArrived(String topic, MqttMessage message) throws Exception {
@@ -150,14 +155,15 @@ public class MQTT_Collector implements MqttCallback {
     }
 
 
-    public static void main(String[] args) {
-        // Creo l'istanza del singleton DatabaseConnection
+    public static void main(String[] args) 
+    {
+        // Create Singleton DatabaseConnection instance
         DB.getDb(); // Questo assicura che la connessione al database venga stabilita una volta sola.
 
-        // Creo l'istanza
+        // Instance creation
         MqttClient mqttClient = connectToBroker();
 
-        // Aggiungo la connessione ai topic MQTT
+        // Mqtt connection added to topic
         subscribeToTopics(mqttClient);
     }
 }
