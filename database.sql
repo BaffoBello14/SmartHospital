@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS oxygen_sensor (
 CREATE TABLE IF NOT EXISTS heartbeat_sensor (
     id INT NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    value DECIMAL(5, 2),
+    value INTEGER(3),
     PRIMARY KEY (id, timestamp)
 );
 
