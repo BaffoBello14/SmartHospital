@@ -100,7 +100,7 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
-              <mainClass>it.unipi.iot.cloudApplication.Coordinator</mainClass>
+              <mainClass>it.unipi.iot.Coordinator</mainClass>
               <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
             </manifest>
           </archive>
