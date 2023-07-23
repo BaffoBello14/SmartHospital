@@ -4,9 +4,16 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.eclipse.californium.core.CoapResource;
 import org.eclipse.californium.core.CoapServer;
+import org.eclipse.californium.core.coap.CoAP;
 import org.eclipse.californium.core.server.resources.CoapExchange;
+import org.eclipse.californium.core.coap.Response;
 import org.eclipse.paho.client.mqttv3.*;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
+
+import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -58,7 +65,7 @@ public class Coordinator implements MqttCallback {
                 throw new RuntimeException(e);
             }
 
-            Response response;
+            Response response = null;
             InetAddress address = exchange.getSourceAddress();
 
             System.out.println("TRYNA REGISTER THE ACTUATOR WITH IP: "+address);
@@ -68,17 +75,15 @@ public class Coordinator implements MqttCallback {
             try (Connection connection = DB.getDb())
             {
                 System.out.println("CONNESSIONE STABILITA\n");
-                try (PreparedStatement ps = connection.prepareStatement("REPLACE INTO" + DATABASE_NAME +" (ip, type, status) VALUES(?,?,?);")) 
+                try (PreparedStatement ps = connection.prepareStatement("REPLACE INTO iot.actuator(ip, type) VALUES(?,?);")) 
                 {
+                    String ip = address.toString().substring(1); // Rimuove il slash iniziale
                     // 1 = Inet
-                    ps.setString(1, address.substring(1)); //substring(1)
+                    ps.setString(1, ip); //substring(1)
                     // 2 = Tipo attuatore
                     ps.setString(2, (String) obj.get("type"));
-                    // Actuator start status
-                    // Start status = off = boolean 0
-                    ps.setInt(3, 0);
                     
-                    System.out.println("PREPARED STATEMENT CON INDIRIZZO: "+address.substring(1)+" TIPO ATTUATORE: "+actuatorType.toString()+" STATO: "+status.toString());
+                    System.out.println("PREPARED STATEMENT CON INDIRIZZO: "+ ip +" TIPO ATTUATORE: "+(String) obj.get("type"));
                     System.out.println("CERCO DI ESEGUIRE LA UPDATE\n");
                     
                     // Tryna execute UPDATE
@@ -101,6 +106,7 @@ public class Coordinator implements MqttCallback {
             catch (SQLException e)
             {
                 e.printStackTrace();
+                response = new Response(CoAP.ResponseCode.INTERNAL_SERVER_ERROR); // handle SQLException
             }
             
             // Return number of raw coinvolte
@@ -176,7 +182,7 @@ public class Coordinator implements MqttCallback {
                     float oxygenLevel = jsonPayload.get("value").getAsFloat();
                     try (Connection connection = DB.getDb()) 
                     {
-                        String sql = "INSERT INTO oxygen_sensor (id, value) VALUES ('" + sensorId + "', " + oxygenLevel + ")";
+                        String sql = "INSERT INTO iot.oxygen_sensor (id, value) VALUES ('" + sensorId + "', " + oxygenLevel + ")";
                         try (Statement statement = connection.createStatement()) 
                         {
                             statement.executeUpdate(sql);
@@ -193,7 +199,7 @@ public class Coordinator implements MqttCallback {
                     int heartbeat = jsonPayload.get("value").getAsInt();
                     try (Connection connection = DB.getDb()) 
                     {
-                        String sql = "INSERT INTO heartbeat_sensor (id, value) VALUES ('" + sensorId + "', " + heartbeat + ")";
+                        String sql = "INSERT INTO iot.heartbeat_sensor (id, value) VALUES ('" + sensorId + "', " + heartbeat + ")";
                         try (Statement statement = connection.createStatement()) 
                         {
                             statement.executeUpdate(sql);
@@ -210,7 +216,7 @@ public class Coordinator implements MqttCallback {
                     float temperature = jsonPayload.get("value").getAsFloat();
                     try (Connection connection = DB.getDb()) 
                     {
-                        String sql = "INSERT INTO temperature_sensor (id, value) VALUES ('" + sensorId + "', " + temperature + ")";
+                        String sql = "INSERT INTO iot.temperature_sensor (id, value) VALUES ('" + sensorId + "', " + temperature + ")";
                         try (Statement statement = connection.createStatement()) 
                         {
                             statement.executeUpdate(sql);
