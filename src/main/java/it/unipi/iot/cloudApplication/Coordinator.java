@@ -12,6 +12,8 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import it.unipi.iot.DB;
+
 public class Coordinator implements MqttCallback {
     private static final String MQTT_BROKER = "tcp://127.0.0.1:1883";
     private static final String OXYGEN_TOPIC = "ossigeno";
@@ -90,7 +92,7 @@ public class Coordinator implements MqttCallback {
                 if (topic.equals(OXYGEN_TOPIC)) {
                     float oxygenLevel = jsonPayload.get("value").getAsFloat();
                     try (Connection connection = DB.getDb()) {
-                        String sql = "INSERT INTO oxygen_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + oxygenLevel + ")";
+                        String sql = "INSERT INTO oxygen_sensor (id, value) VALUES ('" + sensorId + "', " + oxygenLevel + ")";
                         try (Statement statement = connection.createStatement()) {
                             statement.executeUpdate(sql);
                         }
@@ -101,7 +103,7 @@ public class Coordinator implements MqttCallback {
                 } else if (topic.equals(HEARTBEAT_TOPIC)) {
                     int heartbeat = jsonPayload.get("value").getAsInt();
                     try (Connection connection = DB.getDb()) {
-                        String sql = "INSERT INTO heartbeat_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + heartbeat + ")";
+                        String sql = "INSERT INTO heartbeat_sensor (id, value) VALUES ('" + sensorId + "', " + heartbeat + ")";
                         try (Statement statement = connection.createStatement()) {
                             statement.executeUpdate(sql);
                         }
@@ -112,7 +114,7 @@ public class Coordinator implements MqttCallback {
                 } else if (topic.equals(TEMPERATURE_TOPIC)) {
                     float temperature = jsonPayload.get("value").getAsFloat();
                     try (Connection connection = DB.getDb()) {
-                        String sql = "INSERT INTO temperature_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + temperature + ")";
+                        String sql = "INSERT INTO temperature_sensor (id, value) VALUES ('" + sensorId + "', " + temperature + ")";
                         try (Statement statement = connection.createStatement()) {
                             statement.executeUpdate(sql);
                         }
