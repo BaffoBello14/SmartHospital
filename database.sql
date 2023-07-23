@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS temperature_sensor (
 
 CREATE TABLE IF NOT EXISTS actuator (
     ip VARCHAR(45) PRIMARY KEY,
-    type VARCHAR(40) NOT NULL
+    type VARCHAR(40) NOT NULL,
+    status BOOLEAN NOT NULL
 );
 
 DELIMITER //
