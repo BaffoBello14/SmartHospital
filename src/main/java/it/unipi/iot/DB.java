@@ -20,21 +20,22 @@ public class DB {
     }
 
     public static Connection getDb() {
-        if (db == null) {
-            String jdbcUrl = String.format(JDBC_URL, HOST, PORT, DATABASE_NAME);
-            Properties properties = new Properties();
-            properties.put("user", USERNAME);
-            properties.put("password", PASSWORD);
-            properties.put("zeroDateTimeBehavior", "CONVERT_TO_NULL");
-            properties.put("serverTimeZone", "CET");
-
-            try {
+        try {
+            if (db == null || (db != null && db.isClosed())) {
+                String jdbcUrl = String.format(JDBC_URL, HOST, PORT, DATABASE_NAME);
+                Properties properties = new Properties();
+                properties.put("user", USERNAME);
+                properties.put("password", PASSWORD);
+                properties.put("zeroDateTimeBehavior", "CONVERT_TO_NULL");
+                properties.put("serverTimeZone", "CET");
+    
                 db = DriverManager.getConnection(jdbcUrl, properties);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
             }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
-
+    
         return db;
     }
+    
 }
