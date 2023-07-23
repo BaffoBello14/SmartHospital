@@ -21,7 +21,7 @@ public class DB {
 
     public static Connection getDb() {
         try {
-            if (db == null || (db != null && db.isClosed())) {
+            if (db == null || db.isClosed()) {
                 String jdbcUrl = String.format(JDBC_URL, HOST, PORT, DATABASE_NAME);
                 Properties properties = new Properties();
                 properties.put("user", USERNAME);
