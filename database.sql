@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS temperature_sensor (
 
 CREATE TABLE IF NOT EXISTS actuator (
     ip VARCHAR(45) PRIMARY KEY,
-    type VARCHAR(40) NOT NULL
+    type VARCHAR(40) NOT NULL,
+    status BOOLEAN NOT NULL DEFAULT 0
 );
 
 DELIMITER //
@@ -82,10 +83,6 @@ END;
 //
 DELIMITER ;
 
--- Seleziona il database "iot"
-USE iot;
-
--- Inserisci 10 valori nella tabella oxygen_sensor
 -- Inserisci 10 valori nella tabella oxygen_sensor
 INSERT INTO oxygen_sensor (id, timestamp, value) VALUES 
 ('o1', NOW(), 40 + RAND() * 60),
