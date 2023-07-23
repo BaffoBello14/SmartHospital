@@ -1,7 +1,10 @@
-package it.unipi.iot;
+package it.unipi.iot.cloudApplication;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.eclipse.californium.core.CoapResource;
+import org.eclipse.californium.core.CoapServer;
+import org.eclipse.californium.core.server.resources.CoapExchange;
 import org.eclipse.paho.client.mqttv3.*;
 
 import java.nio.charset.StandardCharsets;
@@ -9,18 +12,45 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class MQTT_Collector implements MqttCallback {
-
+public class Coordinator implements MqttCallback {
     private static final String MQTT_BROKER = "tcp://127.0.0.1:1883";
     private static final String OXYGEN_TOPIC = "ossigeno";
     private static final String HEARTBEAT_TOPIC = "battito";
     private static final String TEMPERATURE_TOPIC = "temperatura";
 
-    private static MqttClient connectToBroker() {
+    private MqttClient mqttClient;
+    private CoapServer coapServer;
+
+    // Definizione di una nuova risorsa CoAP
+    public static class MyCoapResource extends CoapResource {
+        public MyCoapResource(String name) {
+            super(name);
+        }
+
+        @Override
+        public void handleGET(CoapExchange exchange) {
+            exchange.respond("Hello, CoAP!");
+        }
+
+        // implementa altri metodi come handlePOST, handlePUT ecc. se necessario
+    }
+
+    public Coordinator() {
+        // Inizializzazione del server CoAP
+        this.coapServer = new CoapServer(5683);
+        this.coapServer.add(new MyCoapResource("test"));
+        this.coapServer.start();
+
+        // Inizializzazione del client MQTT
+        this.mqttClient = connectToBroker();
+        subscribeToTopics();
+    }
+
+    private MqttClient connectToBroker() {
         String clientId = "tcp://127.0.0.1:1883";
         try {
             MqttClient mqttClient = new MqttClient(MQTT_BROKER, clientId);
-            mqttClient.setCallback(new MyClient());
+            mqttClient.setCallback(this);
             mqttClient.connect();
             return mqttClient;
         } catch (MqttException e) {
@@ -29,11 +59,11 @@ public class MQTT_Collector implements MqttCallback {
         return null;
     }
 
-    private static void subscribeToTopics(MqttClient mqttClient) {
+    private void subscribeToTopics() {
         try {
-            mqttClient.subscribe(OXYGEN_TOPIC);
-            mqttClient.subscribe(HEARTBEAT_TOPIC);
-            mqttClient.subscribe(TEMPERATURE_TOPIC);
+            this.mqttClient.subscribe(OXYGEN_TOPIC);
+            this.mqttClient.subscribe(HEARTBEAT_TOPIC);
+            this.mqttClient.subscribe(TEMPERATURE_TOPIC);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -45,27 +75,20 @@ public class MQTT_Collector implements MqttCallback {
     }
 
     public void deliveryComplete(IMqttDeliveryToken token) {
-        // Non utilizzato in questo esempio
-        System.out.print("DELIVERY COMPLETATA!\n");
+        System.out.println("DELIVERY COMPLETATA!");
     }
 
     public void messageArrived(String topic, MqttMessage message) throws Exception {
-        // MSG = id=sender_id value=sensor_value
         System.out.println("MESSAGE ARRIVED - Topic: " + topic + ", Payload: " + message);
 
-        // Controllo del nome del topic
         if (topic.equals(OXYGEN_TOPIC) || topic.equals(HEARTBEAT_TOPIC) || topic.equals(TEMPERATURE_TOPIC)) {
             try {
-                // Estrazione del payload dai messaggi MQTT
                 String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
-                // Conversione del payload da String a JsonObject
                 JsonObject jsonPayload = JsonParser.parseString(payload).getAsJsonObject();
-                // Estrazione dell'id del sensore dal payload
                 String sensorId = jsonPayload.get("id").getAsString();
 
                 if (topic.equals(OXYGEN_TOPIC)) {
                     float oxygenLevel = jsonPayload.get("value").getAsFloat();
-                    // Inserimento dei dati nel database
                     try (Connection connection = DB.getDb()) {
                         String sql = "INSERT INTO oxygen_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + oxygenLevel + ")";
                         try (Statement statement = connection.createStatement()) {
@@ -77,7 +100,6 @@ public class MQTT_Collector implements MqttCallback {
                     }
                 } else if (topic.equals(HEARTBEAT_TOPIC)) {
                     int heartbeat = jsonPayload.get("value").getAsInt();
-                    // Inserimento dei dati nel database
                     try (Connection connection = DB.getDb()) {
                         String sql = "INSERT INTO heartbeat_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + heartbeat + ")";
                         try (Statement statement = connection.createStatement()) {
@@ -89,7 +111,6 @@ public class MQTT_Collector implements MqttCallback {
                     }
                 } else if (topic.equals(TEMPERATURE_TOPIC)) {
                     float temperature = jsonPayload.get("value").getAsFloat();
-                    // Inserimento dei dati nel database
                     try (Connection connection = DB.getDb()) {
                         String sql = "INSERT INTO temperature_sensor (sensor_id, value) VALUES ('" + sensorId + "', " + temperature + ")";
                         try (Statement statement = connection.createStatement()) {
@@ -110,11 +131,7 @@ public class MQTT_Collector implements MqttCallback {
     }
 
     public static void main(String[] args) {
-        // Creazione dell'istanza singleton DatabaseConnection
         DB.getDb();
-
-        // Creazione dell'istanza del client MQTT e sottoscrizione ai topic
-        MqttClient mqttClient = connectToBroker();
-        subscribeToTopics(mqttClient);
+        Coordinator coordinator = new Coordinator();
     }
 }
