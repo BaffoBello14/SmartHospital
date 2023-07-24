@@ -20,6 +20,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+// Check extends CoapServer
 public class Coordinator implements MqttCallback {
     private static final String MQTT_BROKER = "tcp://127.0.0.1:1883";
     private static final String OXYGEN_TOPIC = "ossigeno";
