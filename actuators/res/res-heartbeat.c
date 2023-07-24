@@ -81,7 +81,7 @@ static void res_get_handler(coap_message_t *request, coap_message_t *response, u
   /* The query string can be retrieved by rest_get_query() or parsed for its key-value pairs. */
   if(coap_get_query_variable(request, "len", &len)) 
   {
-    length = atoi(room);
+    length = atoi(len);
     if(length<0) 
     {
         length = 0;
