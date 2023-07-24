@@ -41,6 +41,7 @@ void client_chunk_handler(coap_message_t *response)
     return;
   }
 
+  // Tentativo di scrittura su un file di log temporaneo
   FILE *file;
   file = fopen("filename.txt", "w");
 

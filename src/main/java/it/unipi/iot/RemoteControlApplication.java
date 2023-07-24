@@ -125,6 +125,7 @@ public class RemoteControlApplication implements Runnable {
                         {
                             // Allora il battito cardiaco è critico -> do something
                             System.out.println("BATTITO CARDIACO CRITICO :  "+retrieved.get(s));
+                            // Implementare logica di controllo 
                         }
                     }
                     else if(s.startsWith("O"))
@@ -133,6 +134,7 @@ public class RemoteControlApplication implements Runnable {
                         {
                             // Allora l'ossigeno è critico -> do something
                             System.out.println("OSSIGENO CRITICO :  "+retrieved.get(s));
+                            // Implementare logica di controllo 
                         }
                     }
                     else if(s.startsWith("T"))
@@ -141,12 +143,15 @@ public class RemoteControlApplication implements Runnable {
                         {
                             // Allora temperatura critica -> do something
                             System.out.println("TEMPERATURA CRITICA :  "+retrieved.get(s));
+                            // Implementare logica di controllo 
+
                         }
                     }
                     else
                     {
+                        // Il sensore non esiste, scritto male
                         // non ci dovrebbe entrare mai
-                        System.out.println("SENSORE NON RICONOSICUTO\n");
+                        System.out.println("SENSORE NON RICONOSICUTO\nSENORI DISPONIBILI: ossigeno, battito, temperatura\n");
                     }
                 }
             }
