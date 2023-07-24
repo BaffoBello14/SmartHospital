@@ -40,6 +40,22 @@ void client_chunk_handler(coap_message_t *response)
     // LOG_ERR("REGISTRATION NOT SUCCESFUL\n");
     return;
   }
+
+  FILE *file;
+  file = fopen("filename.txt", "w");
+
+  if (file == NULL) {
+    printf("Error opening the file.\n");
+    return;
+  }
+
+  const uint8_t *chun;
+  int lenz = coap_get_payload(response, &chun);
+  fprintf(file, "%.*s", lenz, (char *)chun);
+
+  fclose(file);
+
+
   // La risposta non è nulla
   LOG_INFO("SUCCESSFUL REGISTRATION\n");
   int len = coap_get_payload(response, &chunk);
