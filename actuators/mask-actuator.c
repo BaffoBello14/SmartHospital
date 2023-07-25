@@ -34,10 +34,11 @@ void client_chunk_handler(coap_message_t *response)
 {
   const uint8_t *chunk; // Puntatore ad un buffer che conterrà la risposta
   // La struttura response contiene la risposta del coap server
+  LOG_INFO("RISPOSTA: %s",response);
   if(response == NULL) 
   {
-    LOG_ERR("COSI SI FA\n");
-    // LOG_ERR("REGISTRATION NOT SUCCESFUL\n");
+    // LOG_ERR("COSI SI FA\n");
+    LOG_ERR("REGISTRATION NOT SUCCESFUL\n");
     return;
   }
   // La risposta non è nulla
@@ -53,10 +54,10 @@ extern coap_resource_t  res_electromagnetic;
 
 
 
-PROCESS(emshield_thread, "emshield");
-AUTOSTART_PROCESSES(&emshield_thread);
+PROCESS(mask_thread, "mask");
+AUTOSTART_PROCESSES(&mask_thread);
 
-PROCESS_THREAD(emshield_thread, ev, data)
+PROCESS_THREAD(mask_thread, ev, data)
 {
   PROCESS_BEGIN();
 
@@ -65,7 +66,7 @@ PROCESS_THREAD(emshield_thread, ev, data)
   leds_off(LEDS_GREEN);
   leds_off(LEDS_YELLOW);
   */
-  printf("PROCESSO INIZIATO\n");
+  LOG_INFO("PROCESSO INIZIATO\n");
 
     while(!registered)
     {
