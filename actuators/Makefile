@@ -9,7 +9,7 @@ PLATFORMS_EXCLUDE = sky z1
 MODULES_REL += ./resources
 MODULES_REL += ../json_util
 
-CONTIKI=../../..
+CONTIKI=../..
 
 # Include the CoAP implementation
 include $(CONTIKI)/Makefile.dir-variables

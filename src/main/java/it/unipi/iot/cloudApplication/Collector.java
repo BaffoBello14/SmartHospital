@@ -21,7 +21,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 // Check extends CoapServer
-public class Coordinator extends CoapServer implements MqttCallback {
+public class Collector extends CoapServer implements MqttCallback {
 
     // Broker id
     // private static final String MQTT_BROKER = "tcp://127.0.0.1:1883";
@@ -29,11 +29,15 @@ public class Coordinator extends CoapServer implements MqttCallback {
     private static final String OXYGEN_TOPIC = "ossigeno";
     private static final String HEARTBEAT_TOPIC = "battito";
     private static final String TEMPERATURE_TOPIC = "temperatura";
+    
+    private static final Collector instance = new Collector();
 
     private MqttClient mqttClient;
     private CoapServer coapServer;
 
     // Coap resource definition
+    
+    /*
     public static class MyCoapResource extends CoapResource 
     {
         public MyCoapResource(String name)
@@ -129,44 +133,25 @@ public class Coordinator extends CoapServer implements MqttCallback {
         this.mqttClient = connectToBroker();
         subscribeToTopics();
     }
+    */
 
-    private MqttClient connectToBroker() {
-        // String clientId = "tcp://127.0.0.1:1883";
-        String clientId = "smartmed";
-        try 
-        {
-            MqttClient mqttClient = new MqttClient(MQTT_BROKER, clientId);
-            mqttClient.setCallback(this);
-            System.out.println(clientId + "TRYNA CONNECT TO " + MQTT_BROKER + "\n");
-            mqttClient.connect();
-            return mqttClient;
-        } 
-        catch (MqttException e) 
-        {
-            e.printStackTrace();
-        }
-        return null;
+    /*
+    public static void main(String[] args) 
+    {
+        // Adding DB entry point
+        DB.getDb();
+        Coordinator coordinator = new Coordinator();
     }
+    */
 
-    private void subscribeToTopics() {
-        try 
-        {
-            this.mqttClient.subscribe(OXYGEN_TOPIC);
-            this.mqttClient.subscribe(HEARTBEAT_TOPIC);
-            this.mqttClient.subscribe(TEMPERATURE_TOPIC);
-        } 
-        catch (MqttException e) 
-        {
-            e.printStackTrace();
-        }
-    }
-
-    public void connectionLost(Throwable throwable) {
+    public void connectionLost(Throwable throwable) 
+    {
         System.out.println("CONNECTION LOST");
         throwable.printStackTrace();
     }
 
-    public void deliveryComplete(IMqttDeliveryToken token) {
+    public void deliveryComplete(IMqttDeliveryToken token) 
+    {
         System.out.println("DELIVERY COMPLETATA!");
     }
 
@@ -182,7 +167,7 @@ public class Coordinator extends CoapServer implements MqttCallback {
                 String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
                 JsonObject jsonPayload = JsonParser.parseString(payload).getAsJsonObject();
                 String sensorId = jsonPayload.get("id").getAsString();
-
+                
                 if (topic.equals(OXYGEN_TOPIC)) 
                 {
                     float oxygenLevel = jsonPayload.get("value").getAsFloat();
@@ -247,10 +232,60 @@ public class Coordinator extends CoapServer implements MqttCallback {
         }
     }
 
-    public static void main(String[] args) 
+    private MqttClient connectToBroker() 
     {
-        // Adding DB entry point
-        DB.getDb();
-        Coordinator coordinator = new Coordinator();
+        // String clientId = "tcp://127.0.0.1:1883";
+        String clientId = "smartmed";
+        try 
+        {
+            // Try to create a new mqttClient instance
+            MqttClient mqttClient = new MqttClient(MQTT_BROKER, clientId);
+            System.out.println("MQTT CLIENT INSTANCE CREATED\n");
+            
+            mqttClient.setCallback(this);
+            System.out.println(clientId + "TRYNA CONNECT TO " + MQTT_BROKER + "\n");
+            
+            System.out.println("TRY TO CONNECT\n");
+            mqttClient.connect();
+            System.out.println("CONNECTION DONE!\n");
+
+            System.out.println("NOW TRY TO SUBSCRIBE TO TOPICS\n");
+            subscribeToTopics();
+
+            return mqttClient;
+        } 
+        catch (MqttException e) 
+        {
+            e.printStackTrace();
+        }
+        return null;
     }
+
+    private void subscribeToTopics() 
+    {
+        try 
+        {
+            this.mqttClient.subscribe(OXYGEN_TOPIC);
+            this.mqttClient.subscribe(HEARTBEAT_TOPIC);
+            this.mqttClient.subscribe(TEMPERATURE_TOPIC);
+        } 
+        catch (MqttException e) 
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public void run()
+    {
+        try
+        {
+            // Fa tutto la connectToBroker()
+            connectToBroker();
+        }
+        catch(MqttException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
 }

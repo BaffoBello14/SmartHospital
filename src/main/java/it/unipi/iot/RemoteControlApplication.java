@@ -89,6 +89,7 @@ public class RemoteControlApplication implements Runnable {
                             int count = 0;
                             while (result.next()) 
                             {
+                                // Recupero i valori
                                 float sensorValue = result.getFloat("media_valore");
                                 String id = result.getString("id");
                                 System.out.println("ID: " + id + ", Media Valore: " + sensorValue);
@@ -124,8 +125,9 @@ public class RemoteControlApplication implements Runnable {
                         if(retrieved.get(s)>=DNG_HB_TH)
                         {
                             // Allora il battito cardiaco è critico -> do something
-                            System.out.println("BATTITO CARDIACO CRITICO :  "+retrieved.get(s));
+                            System.out.println("BATTITO CRITICO :  "+retrieved.get(s));
                             // Implementare logica di controllo 
+                            
                         }
                     }
                     else if(s.startsWith("O"))
