@@ -42,15 +42,9 @@ public class Coordinator extends CoapServer implements MqttCallback {
         }
 
         @Override
-        public void handleGET(CoapExchange exchange) 
-        {
-            exchange.respond("NO GET HANDLER\n");
-        }
-
-        @Override
         public void handlePOST(CoapExchange exchange) 
         {
-            System.out.println("STARTING HANDLE POST\n");
+            System.out.println("STARTING HANDLE DELETE\n");
             // Try to register new actuator
 
             String s = new String(exchange.getRequestPayload());
@@ -117,12 +111,63 @@ public class Coordinator extends CoapServer implements MqttCallback {
             //return ps.getUpdateCount();
             exchange.respond(response);
         }
+
+        @Override
+        public void handleDELETE(CoapExchange exchange) 
+        {
+            System.out.println("STARTING HANDLE DELETE\n");
+
+            Response response = null;
+            InetAddress address = exchange.getSourceAddress();
+
+            System.out.println("DELETING THE ACTUATOR WITH IP: "+address);
+            
+            int success = -1;
+            
+            try (Connection connection = DB.getDb())
+            {
+                System.out.println("CONNECTION ESTABLISHED\n");
+                try (PreparedStatement ps = connection.prepareStatement("DELETE FROM iot.actuator WHERE ip = ?;")) 
+                {
+                    String ip = address.toString().substring(1); // Rimuove il slash iniziale
+                    // 1 = Inet
+                    ps.setString(1, ip); //substring(1)
+                    
+                    System.out.println("PREPARED STATEMENT WITH ADDRESS: "+ ip);
+                    System.out.println("DELETING...\n");
+                    
+                    // Tryna execute DELETE
+                    ps.executeUpdate();
+                    // Returns the number of rows involved
+                    success = ps.getUpdateCount();
+                    if(success>0)
+                    {
+                        System.out.println("SUCCESSFUL DELETION\n");
+                        System.out.println("ROWS INVOLVED: "+success+"\n");
+                        response = new Response(CoAP.ResponseCode.DELETED);
+                    }
+                    else
+                    {
+                        System.out.println("ERROR IN DELETION\n SUCCESS="+success);
+                        response = new Response(CoAP.ResponseCode.INTERNAL_SERVER_ERROR);
+                    }
+                }
+            }
+            catch (SQLException e)
+            {
+                e.printStackTrace();
+                response = new Response(CoAP.ResponseCode.INTERNAL_SERVER_ERROR); // handle SQLException
+            }
+            
+            exchange.respond(response);
+        }
+
     }
 
     public Coordinator() {
         // Inizializzazione del server CoAP
         this.coapServer = new CoapServer(5683);
-        this.coapServer.add(new MyCoapResource("test"));
+        this.coapServer.add(new MyCoapResource("resheartbeat"));
         this.coapServer.start();
 
         // Inizializzazione del client MQTT
@@ -131,8 +176,8 @@ public class Coordinator extends CoapServer implements MqttCallback {
     }
 
     private MqttClient connectToBroker() {
-        // String clientId = "tcp://127.0.0.1:1883";
-        String clientId = "smartmed";
+        String clientId = "tcp://127.0.0.1:1883";
+        //String clientId = "smartmed";
         try 
         {
             MqttClient mqttClient = new MqttClient(MQTT_BROKER, clientId);

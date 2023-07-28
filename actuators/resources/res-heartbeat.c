@@ -8,8 +8,6 @@
 #define LOG_MODULE "App"
 #define LOG_LEVEL LOG_LEVEL_APP
 
-// Dichiarazione di guerra ad isreaele
-
 // static void res_post_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 // static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);

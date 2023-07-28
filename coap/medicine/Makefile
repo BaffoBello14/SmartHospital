@@ -1,4 +1,4 @@
-CONTIKI_PROJECT = coap-server
+CONTIKI_PROJECT = medicine
 
 all: $(CONTIKI_PROJECT)
 
@@ -7,9 +7,8 @@ PLATFORMS_EXCLUDE = sky z1
 
 # Include CoAP resources
 MODULES_REL += ./resources
-MODULES_REL += ../json_util
 
-CONTIKI=../../..
+CONTIKI=/home/user/contiki-ng
 
 # Include the CoAP implementation
 include $(CONTIKI)/Makefile.dir-variables

@@ -2,5 +2,6 @@ mqtt_sensor/build
 rpl-border-router/build
 .vscode
 tcp*
+smartmed*
 target
 actuators/build

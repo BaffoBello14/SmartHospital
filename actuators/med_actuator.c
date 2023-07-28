@@ -42,7 +42,7 @@ void client_chunk_handler(coap_message_t *response)
   }
 
   // Tentativo di scrittura su un file di log temporaneo
-  FILE *file;
+  /*FILE *file;
   file = fopen("LOGmedicina.txt", "w");
 
   if (file == NULL) {
@@ -54,7 +54,7 @@ void client_chunk_handler(coap_message_t *response)
   int lenz = coap_get_payload(response, &chun);
   fprintf(file, "%.*s", lenz, (char *)chun);
 
-  fclose(file);
+  fclose(file);*/
 
 
   // La risposta non è nulla
