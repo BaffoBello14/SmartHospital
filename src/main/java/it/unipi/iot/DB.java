@@ -2,6 +2,7 @@ package it.unipi.iot;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Properties;
 
@@ -36,6 +37,50 @@ public class DB {
         }
     
         return db;
+    }
+
+    public static boolean changeStatus(String actuatorIp, String actuatorType, String change)
+    {
+        System.out.println("SONO NELLA CLASSE DB A FARE LA CHANGE STATUS\n");
+        try (Connection connection = DB.getDb())
+        {
+            System.out.println("CONNESSIONE STABILITA\n");
+            try (PreparedStatement ps = connection.prepareStatement("REPLACE INTO iot.actuator(ip, type, status) VALUES(?,?,?);"))
+            {
+                // 1 = Inet
+                ps.setString(1, actuatorIp); //substring(1)
+                // 2 = Tipo attuatore
+                ps.setString(2, "med");
+                ps.setString(3, "ON");
+                System.out.println("PREPARED STATEMENT CON INDIRIZZO: "+ actuatorIp +" TIPO ATTUATORE: MED");
+                System.out.println("CERCO DI ESEGUIRE LA UPDATE\n");
+                // Tryna execute UPDATE
+                ps.executeUpdate();
+                // Ritorna il numero di righe coinvolte
+                int success = ps.getUpdateCount();
+                if(success>0)
+                {
+                    System.out.println("STATO CAMBIATO\n");
+                    System.out.println("RIGHE COINVOLTE: "+success+"\n");
+                    // response = new Response(CoAP.ResponseCode.CREATED);
+                    return true;
+                }
+                else
+                {
+                    System.out.println("ERRORE NELLA UPDATE UPDATE\n SUCCESS="+success);
+                    // response = new Response(CoAP.ResponseCode.INTERNAL_SERVER_ERROR);
+                    return false;
+                }
+            }
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+            // response = new Response(CoAP.ResponseCode.INTERNAL_SERVER_ERROR); // handle SQLException
+        }
+        // QUA NON CI DEVE ARRIVARE
+        System.out.println("CE STATO UN ERRORE NELLA UPDATE DELLO STATO\n");
+        return false;
     }
     
 }

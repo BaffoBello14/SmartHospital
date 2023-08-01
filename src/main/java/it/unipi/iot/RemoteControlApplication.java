@@ -66,26 +66,7 @@ public class RemoteControlApplication implements Runnable {
         return type;
     }
 
-    public boolean alreadyInAction(String patient_id, int index)
-    {
-        for(String ids : pazienti.keySet())
-        {
-            if(ids.equals(patient_id))
-            {
-                // Allora è lo stesso paziente
-                // Controlliamo se è attivo l'attuatore di cui abbiamo bisogno
-                if(!pazienti.get(patient_id)[index].equals(""))
-                {
-                    // Allora quell attuatore di quel paziente è gia in azione
-                    // Restituisco si
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    public boolean registerActuator(String patient_id, int index) throws SQLException
+    public String registerActuator(String patient_id, int index) throws SQLException
     {
         for(String ids : pazienti.keySet())
         {
@@ -107,11 +88,11 @@ public class RemoteControlApplication implements Runnable {
                     rs.close();
                     tmp[index] = rs.getString("ip");
                     pazienti.put(patient_id, tmp); 
-                    return true;
+                    return tmp[index];
                 }
             }
         }
-        return false;
+        return "";
     }
 
     public static String retrieveActuatorIP(String patient_id, int index) throws SQLException 
@@ -232,8 +213,8 @@ public class RemoteControlApplication implements Runnable {
                         {
                             System.out.println("BATTITO CRITICO :  " + retrieved.get(s));
                             String actuatorIp = "";
-                            // actuatorIp = retrieveActuatorIP(id_paziente,0);
-                            if(alreadyInAction(id_paziente, 0))
+                            actuatorIp = retrieveActuatorIP(id_paziente,0);
+                            if(!retrieveActuatorIP(id_paziente,0).isEmpty())
                             {
                                 // Teoricament non fai nulla
                                 // Ce un pericolo ma l'attuatore è gia attivo
@@ -241,90 +222,45 @@ public class RemoteControlApplication implements Runnable {
                             }
                             else
                             {
+                                // Ce un pericolo e l'attuatore non è attivo
+
                                 // Si deve registrare
                                 // e fare la chiamata al coap client
                                 // per attivare l'attuatore
                                 // -> query per cambiare lo stato da off ad on
                                 System.out.println("TRYNA REGISTER ACTUATOR\n");
-                                if(registerActuator(id_paziente, 0))
+                                // AGGIORNA LO STATO DELL'ATTUATORE NELLA VARIABILE LOCALE pazienti
+                                // La registerActuatore deve ritornare una stringa
+                                actuatorIp = registerActuator(id_paziente,0);
+                                if(!actuatorIp.isEmpty())
                                 {
                                     // Registrazzione avvenuta con successo
                                     // Messo dentro la mappa
                                     System.out.println("ACTUATOR REGISTERED\n");
-                                    actuatorIp = retrieveActuatorIP(id_paziente,0);
+                                    
                                     // Adesso deve fare la chiamata al coap client per attivarlo
-                                    
-                                    // Response response = null;
-                                    
-                                    try (Connection connection = DB.getDb())
+                                    // AGGIORNA LO STATO DELLA RISORSA NEL DB
+                                    if(DB.changeStatus(actuatorIp, "med", "ON"))
                                     {
-                                        System.out.println("CONNESSIONE STABILITA\n");
-                                        try (PreparedStatement ps = connection.prepareStatement("REPLACE INTO iot.actuator(ip, type, status) VALUES(?,?,?);")) 
+                                        // Il cambio stato attuatore nel DB è andato a buon fine
+                                        // Adesso deve richiedere la put
+                                        System.out.println("CAMBIO STATO NELLA MAPPA LOCALE TUTTO OK\n");
+                                        System.out.println("ADESSO CERCO DI RICHIEDERE LA PUT\n");
+                                        // RICHIEDE LA PUT ALLA RISORSA ATTUATORE CORRISPONDENTE
+                                        if(Actuator_Client.putClientRequest(actuatorIp, "med", "ON"))
                                         {
-                                            
-                                            // 1 = Inet
-                                            ps.setString(1, actuatorIp); //substring(1)
-                                            // 2 = Tipo attuatore
-                                            ps.setString(2, "med");
-                                            ps.setString(3, "ON");
-                                            
-                                            System.out.println("PREPARED STATEMENT CON INDIRIZZO: "+ actuatorIp +" TIPO ATTUATORE: MED");
-                                            System.out.println("CERCO DI ESEGUIRE LA UPDATE\n");
-                                            
-                                            // Tryna execute UPDATE
-                                            ps.executeUpdate();
-                                            // Ritorna il numero di righe coinvolte
-                                            int success = ps.getUpdateCount();
-                                            if(success>0)
-                                            {
-                                                System.out.println("STATO CAMBIATO\n");
-                                                System.out.println("RIGHE COINVOLTE: "+success+"\n");
-                                                // response = new Response(CoAP.ResponseCode.CREATED);
-                                            }
-                                            else
-                                            {
-                                                System.out.println("ERRORE NELLA UPDATE UPDATE\n SUCCESS="+success);
-                                                // response = new Response(CoAP.ResponseCode.INTERNAL_SERVER_ERROR);
-                                            }
+                                            System.out.println("PUT TUTTO OK\n");
+                                        }
+                                        else
+                                        {
+                                            System.out.println("ERRORE NELLA PUT\n");
                                         }
                                     }
-                                    catch (SQLException e)
-                                    {
-                                        e.printStackTrace();
-                                        // response = new Response(CoAP.ResponseCode.INTERNAL_SERVER_ERROR); // handle SQLException
-                                    }
-                                    
-                                    // Return number of raw coinvolte
-                                    //return ps.getUpdateCount();
-                                    // exchange.respond(response);
-
-                                    // Fatta la update deve richiedere la put
-                                    // s = nome risorsa attuatore
-                                    CoapClient client = new CoapClient("coap://[" + actuatorIp + "]/" + s);
-
-                                    JSONObject object = new JSONObject();
-                                    object.put("action", "ON");
-
-                                    CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
-
-                                    if (response == null) 
-                                    {
-                                        System.err.println("An error occurred while contacting the actuator");
-                                    } 
-                                    else 
-                                    {
-                                        CoAP.ResponseCode code = response.getCode();
-                                        //System.out.println(code);
-                                        switch (code) 
-                                        {
-                                            case CHANGED:
-                                                System.err.println("State correctly changed because of danger or user input");
-                                                break;
-                                            case BAD_OPTION:
-                                                System.err.println("Parameters error");
-                                                break;
-                                        }
-                                    }
+                                }
+                                else
+                                {
+                                    // Non avventua con successo la registrazione
+                                    System.out.println("ERRORE GENERICO NELLA REGISTRAZIONE DELL'ATTUATORE\n");
                                 }
                             }
                                 
@@ -332,32 +268,49 @@ public class RemoteControlApplication implements Runnable {
                         else if(retrieved.get(s) >= CTR_HB_TH)
                         {
                             System.out.println("BATTITO PERICOLOSO :  " + retrieved.get(s));
+
                         }
                         else
                         {
                             System.out.println("BATTITO NON CRITICO :  " + retrieved.get(s));
                         }
-                    } else if (s.startsWith("O")) {
-                        if (retrieved.get(s) >= DNG_OX_TH) {
+                    } 
+                    else if (s.startsWith("O")) 
+                    {
+                        if (retrieved.get(s) >= DNG_OX_TH) 
+                        {
                             System.out.println("OSSIGENO CRITICO :  " + retrieved.get(s));
-                        } else {
+                        } 
+                        else 
+                        {
                             System.out.println("OSSIGENO NON CRITICO :  " + retrieved.get(s));
                         }
-                    } else if (s.startsWith("T")) {
-                        if (retrieved.get(s) >= DNG_TEMP_TH) {
+                    } 
+                    else if (s.startsWith("T")) 
+                    {
+                        if (retrieved.get(s) >= DNG_TEMP_TH) 
+                        {
                             System.out.println("TEMPERATURA CRITICA :  " + retrieved.get(s));
-                        } else {
+                        } 
+                        else 
+                        {
                             System.out.println("TEMPERATURA NON CRITICA :  " + retrieved.get(s));
                         }
-                    } else {
+                    } 
+                    else 
+                    {
                         System.out.println("SENSORE NON RICONOSICUTO\nSENORI DISPONIBILI: ossigeno, battito, temperatura\n");
                     }
                 }
             }
-        } catch (SQLException e) {
+        } 
+        catch (SQLException e) 
+        {
             // TODO Auto-generated catch block
             e.printStackTrace();
-        } finally {
+        } 
+        finally 
+        {
             Thread.currentThread().interrupt();
         }
 

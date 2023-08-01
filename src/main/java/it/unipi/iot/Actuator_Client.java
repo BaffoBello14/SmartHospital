@@ -1,6 +1,3 @@
-package SmartSuit.unipi.it.remoteControlApplication;
-
-import SmartSuit.unipi.it.DatabaseAccess;
 import org.eclipse.californium.core.CoapClient;
 import org.eclipse.californium.core.CoapResponse;
 import org.eclipse.californium.core.coap.CoAP;
@@ -12,18 +9,22 @@ import java.util.HashMap;
 
 public class Actuator_Client {
 
-    public static void actuatorCall(String ip, String resource, String action, int overThreshold) throws SQLException 
+    public static boolean putClientRequest(String ip, String resource, String action) throws SQLException 
     {
         CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource);
+        // Nella putHandler
+        // se gli arriva ON -> accendi
+        // se gli arriva OFF -> spegni
         JSONObject object = new JSONObject();
-        object.put("threshold", overThreshold);
         object.put("action", action);
-        
+
+        // Fa la richiesta di PUT 
         CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
         
         if (response == null) 
         {
             System.err.println("An error occurred while contacting the actuator");
+            return false;
         } 
         else 
         {
@@ -32,22 +33,23 @@ public class Actuator_Client {
             switch (code) 
             {
                 case CHANGED:
-                    System.err.println("State correctly changed because of danger or user input");
-                    DatabaseAccess.updateActuators("/" + ip, resource, action);
+                    System.err.println("STATO CAMBIATO CORRETTAMENTE\n");
+                    return true;
                     break;
                 case BAD_OPTION:
-                    System.err.println("Parameters error");
+                    return false;
+                    System.err.println("ERRORE NEL CAMBIO STATO\n");
                     break;
+                default:
+                     System.err.println("ERRORE DEFAULT\n");
+                     break;
             }
 
         }
+        // QUI NON CI DOVREBBE ARRIVARE MAI
+        System.out.println("QUI NON CI DEVE ARRIVARE\n");
+        return false;
     }
-
-    public static void setIsDanger(String danger, boolean val){
-        isDanger.put(danger, val);
-    }
-
-    public static HashMap<String, Boolean> getIsDanger(){return isDanger;}
 
 }
 
