@@ -46,27 +46,7 @@ public class RemoteControlApplication implements Runnable {
         return instance;
     }
 
-    public String retrieveActuatorType(int index)
-    {
-        String type = "";
-        switch (index) {
-            case 0:
-                type = "med";
-                break;
-            case 1:
-                type = "mask";
-                break;
-            case 2:
-                type = "altro";
-                break;
-            default:
-                System.out.println("Invalid control value!");
-                return "";
-        }
-        return type;
-    }
-
-    public String registerActuator(String patient_id, int index) throws SQLException
+    public String registerActuator(String patient_id, int index, String type) throws SQLException
     {
         for(String ids : pazienti.keySet())
         {
@@ -82,7 +62,6 @@ public class RemoteControlApplication implements Runnable {
                     // Deve andare nella tabella degli attuatori
                     // PreparedStatement ps = connection.prepareStatement("SELECT ip, status FROM actuators WHERE type = ?");
                     PreparedStatement ps = connection.prepareStatement("SELECT ip FROM actuators WHERE type = ?");
-                    String type = retrieveActuatorType(index);
                     ps.setString(1, type);
                     ResultSet rs = ps.executeQuery();
                     rs.close();
@@ -231,7 +210,7 @@ public class RemoteControlApplication implements Runnable {
                                 System.out.println("TRYNA REGISTER ACTUATOR\n");
                                 // AGGIORNA LO STATO DELL'ATTUATORE NELLA VARIABILE LOCALE pazienti
                                 // La registerActuatore deve ritornare una stringa
-                                actuatorIp = registerActuator(id_paziente,0);
+                                actuatorIp = registerActuator(id_paziente,0, "med");
                                 if(!actuatorIp.isEmpty())
                                 {
                                     // Registrazzione avvenuta con successo
