@@ -2,7 +2,11 @@ package it.unipi.iot;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 public class DB {
@@ -37,5 +41,95 @@ public class DB {
     
         return db;
     }
+
+    public static void insertSensorData(String tableName, String id, float value) throws SQLException {
+        String query = "INSERT INTO iot." + tableName + " (id, value) VALUES (?, ?)";
+        executeUpdate(query, id, Float.toString(value));
+    }
+
+    public static void replaceActuator(String ip, String type, String status) throws SQLException {
+        String query = "REPLACE INTO iot.actuator (ip, type, status) VALUES (?, ?, ?)";
+        executeUpdate(query, ip, type, status);
+    }
+
+    public static void deleteActuator(String ip) throws SQLException {
+        String query = "DELETE FROM iot.actuator WHERE ip = ?";
+        executeUpdate(query, ip);
+    }
+
+    public static String retrieveActuatorIP(String type) throws SQLException {
+        if (db == null) {
+            db = getDb();
+        }
+        String ip = null;
+        PreparedStatement ps = db.prepareStatement("SELECT ip FROM actuators WHERE type = ? AND status = 0 LIMIT 1");
+        ps.setString(1, type);
+        ResultSet rs = ps.executeQuery();
+        if (rs.next()) {
+            ip = rs.getString("ip");
+        }
+        rs.close();
+        return ip;
+    }
+
+    public static void updateActuatorStatus(String ip, String patient_id) throws SQLException {
+        if (db == null) {
+            db = getDb();
+        }
+        PreparedStatement ps = db.prepareStatement("UPDATE actuators SET status = 1 WHERE ip = ?");
+        ps.setString(1, ip);
+        ps.executeUpdate();
+    }
+
+    private static void executeUpdate(String query, String... params) throws SQLException {
+        try (Connection connection = getDb();
+             PreparedStatement ps = connection.prepareStatement(query)) {
+            for (int i = 0; i < params.length; i++) {
+                ps.setString(i + 1, params[i]);
+            }
+            ps.executeUpdate();
+        }
+    }
+
+    public static Map<String, Float> retrieveSensorData(String sensorType) throws SQLException {
+    if (db == null) {
+        db = getDb();
+    }
     
+    HashMap<String, Float> retrieved = new HashMap<>();
+
+    String query = "SELECT id, AVG(value) AS media_valore "
+            + "FROM ( "
+            + "  SELECT "
+            + "    t1.id, "
+            + "    t1.value "
+            + "  FROM "
+            + "    (SELECT "
+            + "      @row_num := IF(@prev_value = id, @row_num + 1, 1) AS rn, "
+            + "      value, "
+            + "      @prev_value := id AS id "
+            + "    FROM "
+            + "      " + sensorType + " t, "
+            + "      (SELECT @row_num := 1) x, "
+            + "      (SELECT @prev_value := '') y "
+            + "    ORDER BY "
+            + "      id, "
+            + "      timestamp DESC "
+            + "    ) t1 "
+            + "  WHERE t1.rn <= 5 "
+            + ") t2 "
+            + "GROUP BY id";
+    
+    try (PreparedStatement ps = db.prepareStatement(query)) {
+        try (ResultSet result = ps.executeQuery()) {
+            while (result.next()) {
+                float sensorValue = result.getFloat("media_valore");
+                String id = result.getString("id");
+                retrieved.put(id, sensorValue);
+            }
+        }
+    }
+    
+    return retrieved;
+    }
 }
