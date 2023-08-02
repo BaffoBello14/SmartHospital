@@ -38,13 +38,13 @@ public class RemoteControlApplication implements Runnable {
         return instance;
     }
 
-    public int retrieveSensorType(String iniziale)
+    public int retrieveSensorType(String id)
     {
-        if (iniziale.startsWith("O"))
+        if (id.startsWith("O"))
         {
             return 0;
         }
-        else if (iniziale.startsWith("T"))
+        else if (id.startsWith("T"))
         {
             return 1;
         } 
@@ -57,7 +57,8 @@ public class RemoteControlApplication implements Runnable {
     public String retrieveActuatorType(int index) 
     {
         String type = "";
-        switch (index) {
+        switch (index) 
+        {
             case 0:
                 type = "mask";
                 break;
@@ -72,17 +73,6 @@ public class RemoteControlApplication implements Runnable {
                 return "";
         }
         return type;
-    }
-
-    public boolean alreadyInUse(String patient_id, int index) throws SQLException
-    {
-        if(!pazienti.get(patient_id)[index].isEmpty())
-        {
-            // Vuol dire che in quel posto della mappa ce gia un ip
-            // quindi l'attuatore index è attivo
-            return true;
-        }
-        return false;
     }
 
     public String retrieveActuatorIP(String patient_id, int index) throws SQLException 
@@ -121,10 +111,9 @@ public class RemoteControlApplication implements Runnable {
         // Richiedo la PUT
         if(Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive))
         {      
+            DB.updateActuatorStatus(actuatorIp, patient_id, isActive == 0 ? false : true); 
             if(isActive!=0)
-            {
-                // Aggiorno il DB
-                DB.updateActuatorStatus(actuatorIp, patient_id, true);  
+            { 
                 // Va attivato
                 // Lo aggiungo alla mappa
                 newIps[index] = actuatorIp;
@@ -132,8 +121,6 @@ public class RemoteControlApplication implements Runnable {
             }
             else
             {
-                // Aggiorno il DB
-                DB.updateActuatorStatus(actuatorIp, patient_id, false);  
                 newIps[index] = "";
                 pazienti.put(patient_id, newIps);
             }
@@ -147,13 +134,62 @@ public class RemoteControlApplication implements Runnable {
         }
     }
 
+    public int checkCardio(float cardioValue)
+    {
+        if(cardioValue>=U_DNG_HB_TH || cardioValue<=L_DNG_HB_TH)
+            return 2; // pericoloso
+        else if(cardioValue>=U_CTR_HB_TH || cardioValue<=L_CTR_HB_TH)
+            return 1;
+        else
+            return 0;
+    }
+
+    public int checkTropamine(float trpValue)
+    {
+        if(trpValue>=DNG_TRP_TH)
+            return 2; // pericoloso
+        else if(trpValue>=CTR_TRP_TH)
+            return 1;
+        else
+            return 0;
+    }
+
+    public int calculateDanger(float trpValue, float cardioValue)
+    {
+        int trpLevel = checkTropamine(trpValue);
+        int cardioLevel = checkCardio(cardioValue);
+        int sum = trpLevel + cardioLevel;
+        if(sum==4)
+        {
+            // 1. 2-2 -> 2
+            return 2;
+        }
+        else if(sum==3 || sum==2)
+        {
+            // 2. 1-1 -> 1
+            // 3. 1-2 -> 1
+            // 4. 2-1 -> 1
+            // 5. 0-2 -> 1
+            // 6. 2-0 -> 1
+            return 1;
+        }
+        else if(sum==1 || sum==0)
+        {
+            // 7. 0-0 -> 0 
+            // 8. 0-1 -> 0
+            // 9. 1-0 -> 0
+            return 0;
+        }
+        return -1;
+    }
+
     public void run() 
     {
-        pazienti.put("", attuatori);
         
         try 
         {
-            List<String> typeList = Arrays.asList("oxygen_sensor", "temperature_sensor", "heartbeat_sensor");
+            // pazienti = DB.retrieveActiveActuators();
+            List<String> typeList = Arrays.asList("oxygen_sensor", "tropamine_sensor", "heartbeat_sensor");
             HashMap<String, Float> retrieved;
 
             for (String s : typeList) {
@@ -173,79 +209,50 @@ public class RemoteControlApplication implements Runnable {
                         int index = retrieveSensorType(key);
 
                         // Controllo che tipo di dato abbiamo
-                        // if(key.equals("heartbeat_sensor"))
-                        if(index==0)
+                        if(index==0) // OSSIGENO
                         {
                             // Analizziamo il valore del ossigeno
-                            int value = 0;
-                            if(retrieved.get(key)<=CTR_OX_TH)
+                            int value = retrieved.get(key) <= DNG_OX_TH ? 2 : retrieved.get(key) <= CTR_OX_TH ? 1 : 0;
+                            try 
                             {
-                                System.out.println("Danger! Activating actuator...\n");
-                                // Controllare se l'attuatore è gia attivo
-                                if(alreadyInUse(patient_id, index))
+                                if(changeActuatorStatus(patient_id, index, value))
                                 {
-                                    // L'attuatore è gia in uso
-                                    // Non fare nulla
-                                    System.out.println("ATTUATORE GIA IN USO, LASCIARLO ATTIVO\n");
+                                    System.out.println("ATTUATORE ON LIVELLO "+ value +"\n");
                                 }
                                 else
                                 {
-                                    // Vuol dire che non era attivo e bisogna attivarlo
-                                    if(retrieved.get(key)<=DNG_OX_TH)
-                                        value = 2; // pericolo forte
-                                    else
-                                        value = 1; // controllabile
-                                    try 
-                                    {
-                                        if(changeActuatorStatus(patient_id, index, value))
-                                        {
-                                            System.out.println("ATTUATORE OFF -> ON\n");
-                                        }
-                                        else
-                                        {
-                                            return;
-                                        }
-                                    } 
-                                    catch (SQLException e) 
-                                    {
-                                        e.printStackTrace();
-                                    }
+                                    return;
                                 }
                             }
-                            else
+                            catch (SQLException e)
                             {
-                                System.out.println("All good. Deactivating actuator...");
-                                if(!alreadyInUse(patient_id, index))
+                                e.printStackTrace();
+                            }
+                        }
+                        else if(index==1 || index==2)
+                        {
+                            float trpValue = retrieved.get("k");
+                            float cardioValue = retrieved.get("c");
+                            int value = calculateDanger(trpValue, cardioValue);
+                            try 
+                            {
+                                if(changeActuatorStatus(patient_id, index, value))
                                 {
-                                    // Non era attivo quindi lo lascio disattivato
-                                    System.out.println("ATTUATORE RIMANE SPENTO\n");
+                                    System.out.println("ATTUATORE ON LIVELLO "+ value +"\n");
                                 }
                                 else
                                 {
-                                    // Era acceso e devo disattivarlo
-                                    System.out.println("L'ATTUATORE ERA ATTIVO E DEVO SPEGNERLO\n");
-                                    try 
-                                    {
-                                        changeActuatorStatus(patient_id, index, 0);
-                                        System.out.println("ATTUATORE ON -> OFF\n");
-                                    } 
-                                    catch (SQLException e) 
-                                    {
-                                        e.printStackTrace();
-                                    }
+                                    return;
                                 }
                             }
-                        }
-                        else if(key.equals("oxygen_sensor"))
-                        {
-
-                        }
-                        else if(key.equals("temperature_sensor"))
-                        {
-
+                            catch (SQLException e)
+                            {
+                                e.printStackTrace();
+                            }
                         }
                         else
                         {
+                            // NON CI DEVE ARRIVARE 
                             System.out.println("SENSORE NON RICONOSCIUTOOO\n");
                         }
                     }
