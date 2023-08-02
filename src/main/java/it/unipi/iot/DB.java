@@ -107,44 +107,71 @@ public class DB {
     }
 
     public static Map<String, Float> retrieveSensorData(String sensorType) throws SQLException {
-    if (db == null) {
-        db = getDb();
-    }
-    
-    HashMap<String, Float> retrieved = new HashMap<>();
+        if (db == null) {
+            db = getDb();
+        }
+        
+        HashMap<String, Float> retrieved = new HashMap<>();
 
-    String query = "SELECT id, AVG(value) AS media_valore "
-            + "FROM ( "
-            + "  SELECT "
-            + "    t1.id, "
-            + "    t1.value "
-            + "  FROM "
-            + "    (SELECT "
-            + "      @row_num := IF(@prev_value = id, @row_num + 1, 1) AS rn, "
-            + "      value, "
-            + "      @prev_value := id AS id "
-            + "    FROM "
-            + "      " + sensorType + " t, "
-            + "      (SELECT @row_num := 1) x, "
-            + "      (SELECT @prev_value := '') y "
-            + "    ORDER BY "
-            + "      id, "
-            + "      timestamp DESC "
-            + "    ) t1 "
-            + "  WHERE t1.rn <= 5 "
-            + ") t2 "
-            + "GROUP BY id";
-    
-    try (PreparedStatement ps = db.prepareStatement(query)) {
-        try (ResultSet result = ps.executeQuery()) {
-            while (result.next()) {
-                float sensorValue = result.getFloat("media_valore");
-                String id = result.getString("id");
-                retrieved.put(id, sensorValue);
+        String query = "SELECT id, AVG(value) AS media_valore "
+                + "FROM ( "
+                + "  SELECT "
+                + "    t1.id, "
+                + "    t1.value "
+                + "  FROM "
+                + "    (SELECT "
+                + "      @row_num := IF(@prev_value = id, @row_num + 1, 1) AS rn, "
+                + "      value, "
+                + "      @prev_value := id AS id "
+                + "    FROM "
+                + "      " + sensorType + " t, "
+                + "      (SELECT @row_num := 1) x, "
+                + "      (SELECT @prev_value := '') y "
+                + "    ORDER BY "
+                + "      id, "
+                + "      timestamp DESC "
+                + "    ) t1 "
+                + "  WHERE t1.rn <= 5 "
+                + ") t2 "
+                + "GROUP BY id";
+        
+        try (PreparedStatement ps = db.prepareStatement(query)) {
+            try (ResultSet result = ps.executeQuery()) {
+                while (result.next()) {
+                    float sensorValue = result.getFloat("media_valore");
+                    String id = result.getString("id");
+                    retrieved.put(id, sensorValue);
+                }
             }
         }
+        
+        return retrieved;
     }
-    
-    return retrieved;
+
+    public static HashMap<String, String[]> retrieveActiveActuators() throws SQLException {
+        if (db == null) {
+            db = getDb();
+        }
+
+        HashMap<String, String[]> activeActuators = new HashMap<>();
+        PreparedStatement ps = db.prepareStatement("SELECT ip, type, status FROM actuator WHERE status <> 0");
+        ResultSet rs = ps.executeQuery();
+        while (rs.next()) {
+            String ip = rs.getString("ip");
+            String type = rs.getString("type");
+            String patientId = String.valueOf(rs.getInt("status"));
+
+            String[] actuatorIps = activeActuators.getOrDefault(patientId, new String[3]);
+            for (int i = 0; i < actuatorIps.length; i++) {
+                if (actuatorIps[i] == null) {
+                    actuatorIps[i] = ""; // initialize with empty string if null
+                }
+            }
+            actuatorIps[type.equals("mask") ? 0 : type.equals("med") ? 1 : 2] = ip;
+
+            activeActuators.put(patientId, actuatorIps);
+        }
+        rs.close();
+        return activeActuators;
     }
 }
