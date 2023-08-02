@@ -21,8 +21,8 @@ public class Coordinator extends CoapServer implements MqttCallback {
 
     private static final String MQTT_BROKER = "tcp://[::1]:1883";
     private static final String OXYGEN_TOPIC = "ossigeno";
-    private static final String HEARTBEAT_TOPIC = "battito";
-    private static final String TEMPERATURE_TOPIC = "temperatura";
+    private static final String CARDIO_TOPIC = "cardio";
+    private static final String TROPONIN_TOPIC = "tropomina";
 
     private MqttClient mqttClient;
     private CoapServer coapServer;
@@ -96,7 +96,7 @@ public class Coordinator extends CoapServer implements MqttCallback {
 
     public Coordinator() {
         this.coapServer = new CoapServer(5683);
-        this.coapServer.add(new MyCoapResource("resheartbeat"));
+        this.coapServer.add(new MyCoapResource("registration"));
         this.coapServer.start();
 
         this.mqttClient = connectToBroker();
@@ -119,8 +119,8 @@ public class Coordinator extends CoapServer implements MqttCallback {
     private void subscribeToTopics() {
         try {
             this.mqttClient.subscribe(OXYGEN_TOPIC);
-            this.mqttClient.subscribe(HEARTBEAT_TOPIC);
-            this.mqttClient.subscribe(TEMPERATURE_TOPIC);
+            this.mqttClient.subscribe(CARDIO_TOPIC);
+            this.mqttClient.subscribe(TROPONIN_TOPIC);
         } catch (MqttException e) {
             e.printStackTrace();
         }
@@ -138,7 +138,7 @@ public class Coordinator extends CoapServer implements MqttCallback {
     public void messageArrived(String topic, MqttMessage message) throws Exception {
         System.out.println("MESSAGE ARRIVED - Topic: " + topic + ", Payload: " + message);
 
-        if (topic.equals(OXYGEN_TOPIC) || topic.equals(HEARTBEAT_TOPIC) || topic.equals(TEMPERATURE_TOPIC)) {
+        if (topic.equals(OXYGEN_TOPIC) || topic.equals(CARDIO_TOPIC) || topic.equals(TROPONIN_TOPIC)) {
             String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
             JsonObject jsonPayload = JsonParser.parseString(payload).getAsJsonObject();
             String sensorId = jsonPayload.get("id").getAsString();
@@ -149,12 +149,12 @@ public class Coordinator extends CoapServer implements MqttCallback {
                 case OXYGEN_TOPIC:
                     tableName = "oxygen_sensor";
                     break;
-                case HEARTBEAT_TOPIC:
-                    tableName = "heartbeat_sensor";
+                case CARDIO_TOPIC:
+                    tableName = "cardio_sensor";
                     value = jsonPayload.get("value").getAsInt();
                     break;
-                case TEMPERATURE_TOPIC:
-                    tableName = "temperature_sensor";
+                case TROPONIN_TOPIC:
+                    tableName = "troponin_sensor";
                     break;
             }
 

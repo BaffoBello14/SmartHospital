@@ -8,18 +8,18 @@ USE iot;
 CREATE TABLE IF NOT EXISTS oxygen_sensor (
     id VARCHAR(5) NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    value DECIMAL(5, 2),
+    value INTEGER,
     PRIMARY KEY (id, timestamp)
 );
 
-CREATE TABLE IF NOT EXISTS heartbeat_sensor (
+CREATE TABLE IF NOT EXISTS cardio_sensor (
     id VARCHAR(5) NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     value INTEGER,
     PRIMARY KEY (id, timestamp)
 );
 
-CREATE TABLE IF NOT EXISTS temperature_sensor (
+CREATE TABLE IF NOT EXISTS troponin_sensor (
     id VARCHAR(5) NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     value DECIMAL(5, 2),
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS temperature_sensor (
 CREATE TABLE IF NOT EXISTS actuator (
     ip VARCHAR(45) PRIMARY KEY,
     type VARCHAR(40) NOT NULL,
-    status INT NOT NULL DEFAULT 0
+    status INTEGER NOT NULL DEFAULT 0
 );
 
 DELIMITER //
@@ -41,43 +41,31 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'ID must start with "o"';
     END IF;
-    IF NEW.value < 40 OR NEW.value > 100 THEN 
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Value out of range';
-    END IF;
 END;
 //
 DELIMITER ;
 
 DELIMITER //
-CREATE TRIGGER check_heartbeat_sensor_id
-BEFORE INSERT ON heartbeat_sensor
+CREATE TRIGGER check_cardio_sensor_id
+BEFORE INSERT ON cardio_sensor
 FOR EACH ROW 
 BEGIN
-    IF NOT (NEW.id LIKE 'h%') THEN 
+    IF NOT (NEW.id LIKE 'c%') THEN 
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'ID must start with "h"';
-    END IF;
-    IF NEW.value < 50 OR NEW.value > 140 THEN 
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Value out of range';
+        SET MESSAGE_TEXT = 'ID must start with "c"';
     END IF;
 END;
 //
 DELIMITER ;
 
 DELIMITER //
-CREATE TRIGGER check_temperature_sensor_id
-BEFORE INSERT ON temperature_sensor
+CREATE TRIGGER check_troponin_sensor_id
+BEFORE INSERT ON troponin_sensor
 FOR EACH ROW 
 BEGIN
     IF NOT (NEW.id LIKE 't%') THEN 
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'ID must start with "t"';
-    END IF;
-    IF NEW.value < 34 OR NEW.value > 45 THEN 
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Value out of range';
     END IF;
 END;
 //

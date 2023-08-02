@@ -1,7 +1,7 @@
-CONTIKI_PROJECT = LAB-mqtt
+CONTIKI_PROJECT = troponin
 all: $(CONTIKI_PROJECT)
 
-CONTIKI = ../../..
+CONTIKI=/home/user/contiki-ng
 
 include $(CONTIKI)/Makefile.dir-variables
 MODULES += $(CONTIKI_NG_APP_LAYER_DIR)/mqtt
