@@ -58,25 +58,48 @@ public class DB {
     }
 
     public static String retrieveActuatorIP(String type) throws SQLException {
-        if (db == null) {
+        if (db == null) 
+        {
             db = getDb();
         }
         String ip = null;
         PreparedStatement ps = db.prepareStatement("SELECT ip FROM actuators WHERE type = ? AND status = 0 LIMIT 1");
         ps.setString(1, type);
         ResultSet rs = ps.executeQuery();
-        if (rs.next()) {
+        if (rs.next()) 
+        {
             ip = rs.getString("ip");
         }
         rs.close();
         return ip;
     }
 
+    /*
     public static void updateActuatorStatus(String ip, String patient_id) throws SQLException {
         if (db == null) {
             db = getDb();
         }
         PreparedStatement ps = db.prepareStatement("UPDATE actuators SET status = 1 WHERE ip = ?");
+        ps.setString(1, ip);
+        ps.executeUpdate();
+    }
+    */
+
+    public static void updateActuatorStatus(String ip, boolean isActive) throws SQLException {
+        if (db == null) {
+            db = getDb();
+        }
+        PreparedStatement ps = isActive ? db.prepareStatement("UPDATE actuators SET status = 1 WHERE ip = ?") : db.prepareStatement("UPDATE actuators SET status = 0 WHERE ip = ?");
+        // PreparedStatement ps = db.prepareStatement("UPDATE actuators SET status = 1 WHERE ip = ?");
+        ps.setString(1, ip);
+        ps.executeUpdate();
+    }
+
+    public static void turnOffActuator(String ip, String patient_id) throws SQLException {
+        if (db == null) {
+            db = getDb();
+        }
+        PreparedStatement ps = db.prepareStatement("UPDATE actuators SET status = 0 WHERE ip = ?");
         ps.setString(1, ip);
         ps.executeUpdate();
     }
