@@ -9,15 +9,27 @@ import java.util.HashMap;
 
 public class Actuator_Client {
 
-    public static boolean putClientRequest(String ip, String resource, boolean isActive) throws SQLException 
+    public static boolean putClientRequest(String ip, String resource, int isActive) throws SQLException 
     {
         CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource);
         // Nella putHandler
         // se gli arriva ON -> accendi
         // se gli arriva OFF -> spegni
         JSONObject object = new JSONObject();
-        object.put("action", isActive ? "ON" : "OFF");
-
+        String action = "";
+        if(isActive==0)
+        {
+            action = "OFF";
+        }
+        else if(isActive==1)
+        {
+            action = "ON";
+        }
+        else // vuol dire che isActive == 2
+        {
+            action = "POWER";
+        }
+        // object.put("action", isActive ? "ON" : "OFF");
         // Fa la richiesta di PUT 
         CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
         

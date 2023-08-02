@@ -13,14 +13,21 @@ import org.json.simple.JSONObject;
 
 public class RemoteControlApplication implements Runnable {
 
-    private static final float DNG_TEMP_TH = 38.9f;
-    private static final float CTR_TEMP_TH = 36.9f;
+    // S1 -> A1
+    // S2,S3 -> A2
+    // S2,S3 -> A3
+
+    // tropomina = 0.1 g/ml if val > 1 allora pericolo
+    private static final float DNG_TRP_TH = 0.1f;
+    private static final float CTR_TRP_TH = 0.07f;
 
     private static final float DNG_OX_TH = 49.9f;
     private static final float CTR_OX_TH = 59.9f;
 
-    private static final int DNG_HB_TH = 70;
-    private static final int CTR_HB_TH = 80;
+    private static final int U_DNG_HB_TH = 250;
+    private static final int U_CTR_HB_TH = 220;
+    private static final int L_DNG_HB_TH = 20;
+    private static final int L_CTR_HB_TH = 30;
 
     private static final RemoteControlApplication instance = new RemoteControlApplication();
 
@@ -80,26 +87,6 @@ public class RemoteControlApplication implements Runnable {
 
     public String retrieveActuatorIP(String patient_id, int index) throws SQLException 
     {
-        /*
-        String ids = pazienti.keySet().stream().filter(id -> id.equals(patient_id)).findFirst().orElse(null);
-        if (ids != null && !pazienti.get(patient_id)[index].isEmpty()) 
-        {
-            // Questo caso non ha senso
-            // Vuol dire che stai cercando l'ip di un attuatore gia attivo
-            return pazienti.get(patient_id)[index];
-        } 
-        else 
-        {
-            String type = retrieveActuatorType(index);
-            String ip = DB.retrieveActuatorIP(type);
-            if (ip != null) 
-            {
-                pazienti.get(patient_id)[index] = ip;
-            }
-            pazienti.get(patient_id)[index] = ip;
-            return ip;
-        }
-        */
         // String type = retrieveActuatorType(index);
         String ip = DB.retrieveActuatorIP(retrieveActuatorType(index));
         if (!ip.isEmpty()) 
@@ -116,142 +103,54 @@ public class RemoteControlApplication implements Runnable {
         }
     }
 
-    /*
-    public String registerActuator(String patient_id, int index) throws SQLException 
-    {
-        String ip = retrieveActuatorIP(patient_id, index);
-        if (!ip.isEmpty()) 
-        {
-            // Vuol dire che l'ip è stato recuperato correttamwnte
-            // String type = retrieveActuatorType(index);
-            // ip = DB.retrieveActuatorIP(type);
-            // if (ip != null) 
-            // {
-                // pazienti.get(patient_id)[index] = ip;
-                // DB.updateActuatorStatus(ip, patient_id);
-            // }
-        }
-        return ip;
-    }
-    */
-
-    public void changeActuatorStatus(String patient_id, int index, boolean isActive) throws SQLException 
+    public boolean changeActuatorStatus(String patient_id, int index, int isActive) throws SQLException 
     {
         String[] newIps = pazienti.get(patient_id);
         // Recupero l'ip
-        String actuatorIp = DB.retrieveActuatorIP(patient_id);
-        if(isActive)
-        {
-            // Va attivato
-            // Lo aggiungo alla mappa
-            newIps[index] = actuatorIp;
-            pazienti.put(patient_id, newIps);
-        }
-        else
-        {
-            newIps[index] = "";
-            pazienti.put(patient_id, newIps);
-        }
-        // Aggiorno il DB
-        DB.updateActuatorStatus(actuatorIp, isActive);
-        // Richiedo la PUT
-        Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive);
-    }
-
-    /*
-    public void activateActuator(String patient_id, int index, boolean isActive) throws SQLException 
-    {
-        // String actuatorIp = registerActuator(patient_id, index);
         String actuatorIp = "";
-        if(isActive)
+        if(pazienti.get(patient_id)[index].isEmpty())
+            actuatorIp = DB.retrieveActuatorIP(retrieveActuatorType(index));
+        else
+            actuatorIp = pazienti.get(patient_id)[index];
+        if(actuatorIp.isEmpty())
         {
-            // Se è da attivare
-            // Recupero l'ip e faccio la put con ON
-            actuatorIp = retrieveActuatorIP(patient_id, index);
-            if(!actuatorIp.isEmpty())
+            // Non ha trovato l'ip 
+            System.out.println("IP NON TROVATO\n");
+            return false;
+        }
+        // Richiedo la PUT
+        if(Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive))
+        {      
+            if(isActive!=0)
             {
-                // Aggiorno lo stato sul DB
-                DB.updateActuatorStatus(actuatorIp, patient_id);
-                // Richiedo la put
-
-                Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive);
-
-                CoapClient client = new CoapClient("coap://[" + actuatorIp + "]/" + "actuator" + index);
-                JSONObject object = new JSONObject();
-                object.put("action", isActive ? "ON" : "OFF");
-
-                CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
-
-                if (response == null) 
-                {
-                    System.err.println("An error occurred while contacting the actuator");
-                } 
-                else 
-                {
-                    CoAP.ResponseCode code = response.getCode();
-                    switch (code) 
-                    {
-                        case CHANGED:
-                            System.err.println("State correctly changed because of danger or user input");
-                            break;
-                        case BAD_OPTION:
-                            System.err.println("Parameters error");
-                            break;
-                    }
-                }
-
+                // Aggiorno il DB
+                DB.updateActuatorStatus(actuatorIp, patient_id, true);  
+                // Va attivato
+                // Lo aggiungo alla mappa
+                newIps[index] = actuatorIp;
+                pazienti.put(patient_id, newIps);
             }
+            else
+            {
+                // Aggiorno il DB
+                DB.updateActuatorStatus(actuatorIp, patient_id, false);  
+                newIps[index] = "";
+                pazienti.put(patient_id, newIps);
+            }
+            return true;
         }
         else
         {
-            // Altrimenti rimuovo l'ip dalla mappa pazienti
-            // e poi faccio la put con OFF
-            // pazienti.remove(patient_id, actuatorIp);
-            String[] tmp = pazienti.get(patient_id);
-            tmp[index] = "";
-            pazienti.put(patient_id, tmp);
-            // L'ip posso comunque recuperarlo dal DB
-            // Ma non deve piu esserci nella mappa
-            // actuatorIp = DB.retrieveActuatorIP(retrieveActuatorType(index));
-            DB.turnOffActuator(DB.retrieveActuatorIP(retrieveActuatorType(index)), patient_id);
+            // Errore nella PUT
+            System.out.println("ERRORE NELLA PUT\n");
+            return false;
         }
-        // Nemmeno prima questo if aveva senso
-        // la registerActuator non poteva dare valori nulli
-        /*
-        if (actuatorIp != null) 
-         {
-            CoapClient client = new CoapClient("coap://[" + actuatorIp + "]/" + "actuator" + index);
-
-            JSONObject object = new JSONObject();
-            object.put("action", isActive ? "ON" : "OFF");
-
-            CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
-
-            if (response == null) 
-            {
-                System.err.println("An error occurred while contacting the actuator");
-            } 
-            else 
-            {
-                CoAP.ResponseCode code = response.getCode();
-                switch (code) 
-                {
-                    case CHANGED:
-                        System.err.println("State correctly changed because of danger or user input");
-                        break;
-                    case BAD_OPTION:
-                        System.err.println("Parameters error");
-                        break;
-                }
-            }
-         }
     }
-    */
 
     public void run() 
     {
         pazienti.put("", attuatori);
-
+        
         try 
         {
             List<String> typeList = Arrays.asList("oxygen_sensor", "temperature_sensor", "heartbeat_sensor");
@@ -271,16 +170,16 @@ public class RemoteControlApplication implements Runnable {
                     {
                         // Tolgo la prima lettera che corrisponde al tipo di sensore
                         String patient_id = key.substring(1, key.length());
-                        int index = -1;
-                        index = retrieveSensorType(key.substring(0, 1));
+                        int index = retrieveSensorType(key);
 
                         // Controllo che tipo di dato abbiamo
-                        if(key.equals("heartbeat_sensor"))
+                        // if(key.equals("heartbeat_sensor"))
+                        if(index==0)
                         {
-                            // Analizziamo il valore del battito xardiaco
-                            if(retrieved.get(key)>=DNG_OX_TH)
+                            // Analizziamo il valore del ossigeno
+                            int value = 0;
+                            if(retrieved.get(key)<=CTR_OX_TH)
                             {
-                                // Se è critico, deve essere acceso med
                                 System.out.println("Danger! Activating actuator...\n");
                                 // Controllare se l'attuatore è gia attivo
                                 if(alreadyInUse(patient_id, index))
@@ -292,22 +191,26 @@ public class RemoteControlApplication implements Runnable {
                                 else
                                 {
                                     // Vuol dire che non era attivo e bisogna attivarlo
+                                    if(retrieved.get(key)<=DNG_OX_TH)
+                                        value = 2; // pericolo forte
+                                    else
+                                        value = 1; // controllabile
                                     try 
                                     {
-                                        changeActuatorStatus(patient_id, index, true);
-                                        System.out.println("ATTUATORE OFF -> ON\n");
+                                        if(changeActuatorStatus(patient_id, index, value))
+                                        {
+                                            System.out.println("ATTUATORE OFF -> ON\n");
+                                        }
+                                        else
+                                        {
+                                            return;
+                                        }
                                     } 
                                     catch (SQLException e) 
                                     {
                                         e.printStackTrace();
                                     }
                                 }
-                            }
-                            else if(retrieved.get(key)>=CTR_OX_TH)
-                            {
-                                // Controllo incrociato
-                                // Questo valore è al limite, bisogna vedere gli altri
-
                             }
                             else
                             {
@@ -323,7 +226,7 @@ public class RemoteControlApplication implements Runnable {
                                     System.out.println("L'ATTUATORE ERA ATTIVO E DEVO SPEGNERLO\n");
                                     try 
                                     {
-                                        changeActuatorStatus(patient_id, index, false);
+                                        changeActuatorStatus(patient_id, index, 0);
                                         System.out.println("ATTUATORE ON -> OFF\n");
                                     } 
                                     catch (SQLException e) 
@@ -345,85 +248,6 @@ public class RemoteControlApplication implements Runnable {
                         {
                             System.out.println("SENSORE NON RICONOSCIUTOOO\n");
                         }
-                        
-                        /*
-                        float threshold = -1;
-
-                        if (key.startsWith("O")) 
-                        {
-                            index = 0;
-                            // La scelta della threshold è sbagliata
-                            // non ha senso perche CTR è per il controllo incrociato
-                            threshold = retrieved.get(key) >= DNG_OX_TH ? DNG_OX_TH : CTR_OX_TH;
-                        } 
-                        else if (key.startsWith("T")) 
-                        {
-                            index = 1;
-                            threshold = retrieved.get(key) >= DNG_TEMP_TH ? DNG_TEMP_TH : CTR_TEMP_TH;
-                        } 
-                        else if (key.startsWith("H")) 
-                        {
-                            index = 2;
-                            threshold = retrieved.get(key) >= DNG_HB_TH ? DNG_HB_TH : CTR_HB_TH;
-                        }
-                        */
-
-                        // if (index != -1 && threshold != -1) 
-                        // {
-                            // Bisogna recuperare le rispettive threshold
-
-                            // if (retrieved.get(key) >= threshold)
-                            /* 
-                            if (retrieved.get(key) >= 2) 
-                            {
-                                
-                                System.out.println("Danger! Activating actuator...\n");
-                                // Controllare se l'attuatore è gia attivo
-                                if(alreadyInUse(patient_id, index))
-                                {
-                                    // L'attuatore è gia in uso
-                                    // Non fare nulla
-                                    System.out.println("ATTUATORE GIA IN USO, LASCIARLO ATTIVO\n");
-                                }
-                                else
-                                {
-                                    // Vuol dire che non era attivo e bisogna attivarlo
-                                    try 
-                                    {
-                                        activateActuator(patient_id, index, true);
-                                    } 
-                                    catch (SQLException e) 
-                                    {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            } 
-                            else 
-                            {
-                                System.out.println("All good. Deactivating actuator...");
-                                if(!alreadyInUse(patient_id, index))
-                                {
-                                    // Non era attivo quindi lo lascio disattivato
-                                    System.out.println("ATTUATORE RIMANE SPENTO\n");
-                                }
-                                else
-                                {
-                                    // Era acceso e devo disattivarlo
-                                    System.out.println("L'ATTUATORE ERA ATTIVO E DEVO SPEGNERLO\n");
-                                    try 
-                                    {
-                                        activateActuator(patient_id, index, false);
-                                        System.out.println("ATTUATORE SPENTO\n");
-                                    } 
-                                    catch (SQLException e) 
-                                    {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            }
-                            */ 
-                            
-                        // }
                     }
                 }
             }
