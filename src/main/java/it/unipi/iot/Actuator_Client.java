@@ -31,7 +31,7 @@ public class Actuator_Client {
         {
             action = "POWER";
         }
-        // object.put("action", isActive ? "ON" : "OFF");
+        object.put("action", action);
         // Fa la richiesta di PUT 
         CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
         
@@ -49,11 +49,9 @@ public class Actuator_Client {
                 case CHANGED:
                     System.err.println("STATO CAMBIATO CORRETTAMENTE\n");
                     return true;
-                    break;
                 case BAD_OPTION:
-                    return false;
                     System.err.println("ERRORE NEL CAMBIO STATO\n");
-                    break;
+                    return false;
                 default:
                      System.err.println("ERRORE DEFAULT\n");
                      break;
