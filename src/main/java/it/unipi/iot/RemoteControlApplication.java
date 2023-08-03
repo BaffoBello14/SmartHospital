@@ -140,7 +140,7 @@ public class RemoteControlApplication implements Runnable {
             return 0;
     }
 
-    public int checkTropamine(float trpValue)
+    public int checkTroponin(float trpValue)
     {
         if(trpValue>=DNG_TRP_TH)
             return 2; // pericoloso
@@ -152,7 +152,7 @@ public class RemoteControlApplication implements Runnable {
 
     public int calculateDanger(float trpValue, float cardioValue)
     {
-        int trpLevel = checkTropamine(trpValue);
+        int trpLevel = checkTroponin(trpValue);
         int cardioLevel = checkCardio(cardioValue);
         /*int sum = trpLevel + cardioLevel;
         if(sum==4)
@@ -186,7 +186,7 @@ public class RemoteControlApplication implements Runnable {
         try 
         {
             pazienti = DB.retrieveActiveActuators();
-            List<String> typeList = Arrays.asList("oxygen_sensor", "tropamine_sensor", "cardio_sensor");
+            List<String> typeList = Arrays.asList("oxygen_sensor", "troponin_sensor", "cardio_sensor");
             HashMap<String, Float> retrieved;
 
             for (String s : typeList) {
