@@ -1,145 +1,120 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "contiki.h"
 #include "coap-engine.h"
-#include "sys/etimer.h"
 #include "dev/leds.h"
-#include "os/dev/button-hal.h"
 #include "coap-blocking-api.h"
+
+#include "node-id.h"
+#include "net/ipv6/simple-udp.h"
+#include "net/ipv6/uip.h"
+#include "net/ipv6/uip-ds6.h"
+#include "net/ipv6/uip-debug.h"
+#include "routing/routing.h"
+
+#define SERVER_EP "coap://[fd00::1]:5683"
+#define CONNECTION_TRY_INTERVAL 1
+#define REGISTRATION_TRY_INTERVAL 1
+#define SIMULATION_INTERVAL 1
+
+#define DO_REGISTER 1
 
 /* Log configuration */
 #include "sys/log.h"
-#define LOG_MODULE "App"
-#define LOG_LEVEL LOG_LEVEL_APP
+#define LOG_MODULE "medicine"
+#define LOG_LEVEL LOG_LEVEL_DBG
 
-// Setting importanti
-// URI dell'endpoint
-#define SERVER_EP "coap://[fd00::1]:5683"
-// URI della risorsa
-static char *service_url = "/registration";
-static coap_endpoint_t server_ep;
-static coap_message_t request[1]; 
+#define INTERVAL_BETWEEN_CONNECTION_TESTS 1
 
-// Boolean for check if the registration
-// is already occurred 
+extern coap_resource_t res_type;
+extern coap_resource_t res_quantity;
+
+#ifdef DO_REGISTER
+char *service_url = "/registration";
 static bool registered = false;
 
-// Function called 
-// to handle registration response
-// Callback function used 
-// when a client receives a response
-// from a server
-void client_chunk_handler(coap_message_t *response)
-{
-  const uint8_t *chunk; // Puntatore ad un buffer che conterrà la risposta
-  // La struttura response contiene la risposta del coap server
-  if(response == NULL) 
-  {
-    // LOG_ERR("COSI SI FA\n");
-    LOG_ERR("REGISTRATION NOT SUCCESFUL\n");
-    return;
-  }
+#define SENSOR_TYPE "{\"deviceType\": \"medicine\", \"sensorId\": %u}"
 
-  // Tentativo di scrittura su un file di log temporaneo
-  /*FILE *file;
-  file = fopen("LOGmedicina.txt", "w");
+#endif
 
-  if (file == NULL) {
-    printf("Error opening the file.\n");
-    return;
-  }
+static struct etimer connectivity_timer;
+static struct etimer wait_registration;
 
-  const uint8_t *chun;
-  int lenz = coap_get_payload(response, &chun);
-  fprintf(file, "%.*s", lenz, (char *)chun);
+/*---------------------------------------------------------------------------*/
+static bool is_connected() {
+	if(NETSTACK_ROUTING.node_is_reachable()) {
+		LOG_INFO("The Border Router is reachable\n");
+		return true;
+  	}
 
-  fclose(file);*/
-
-
-  // La risposta non è nulla
-  LOG_INFO("SUCCESSFUL REGISTRATION\n");
-  int len = coap_get_payload(response, &chunk);
-  
-  printf("|%.*s", len, (char *)chunk);
-  // Actuator registered
-  registered=true;
+	LOG_INFO("Waiting for connection with the Border Router\n");
+	return false;
 }
 
-extern coap_resource_t  res_heartbeat; 
+void client_chunk_handler(coap_message_t *response) {
+	const uint8_t *chunk;
+	if(response == NULL) {
+		LOG_INFO("Request timed out\n");
+		etimer_set(&wait_registration, CLOCK_SECOND* REGISTRATION_TRY_INTERVAL);
+		return;
+	}
 
+	int len = coap_get_payload(response, &chunk);
 
+	if(strncmp((char*)chunk, "Success", len) == 0){
+		registered = true;
+	} else
+		etimer_set(&wait_registration, CLOCK_SECOND* REGISTRATION_TRY_INTERVAL);
+}
 
-PROCESS(med_process, "medprocess");
-AUTOSTART_PROCESSES(&med_process);
+/* Declare and auto-start this file's process */
+PROCESS(medicine_server, "Medicine Server");
+AUTOSTART_PROCESSES(&medicine_server);
 
-PROCESS_THREAD(med_process, ev, data)
-{
-  PROCESS_BEGIN();
+PROCESS_THREAD(medicine_server, ev, data){
+	PROCESS_BEGIN();
 
-  /*
-  leds_off(LEDS_RED);
-  leds_off(LEDS_GREEN);
-  leds_off(LEDS_YELLOW);
-  */
-  printf("PROCESSO INIZIATO\n");
+#ifdef DO_REGISTER
+	static coap_endpoint_t server_ep;
+    static coap_message_t request;
+#endif
 
-    while(!registered)
-    {
-        // REGISTRATION--------------------------------------
-        // Populate the coap_endpoint_t data structure
+	PROCESS_PAUSE();
+
+	leds_set(LEDS_NUM_TO_MASK(LEDS_RED));
+
+	LOG_INFO("Starting CoAP-Medicine\n");
+	coap_activate_resource(&res_type, "medicine/type"); 
+	coap_activate_resource(&res_quantity, "medicine/quantity"); 
+
+	// try to connect to the border router
+	etimer_set(&connectivity_timer, CLOCK_SECOND * INTERVAL_BETWEEN_CONNECTION_TESTS);
+	PROCESS_WAIT_UNTIL(etimer_expired(&connectivity_timer));
+	while(!is_connected()) {
+		etimer_reset(&connectivity_timer);
+		PROCESS_WAIT_UNTIL(etimer_expired(&connectivity_timer));
+	}
+
+#ifdef DO_REGISTER
+	while(!registered) {
+		static char registrationString[100] = {0};
+    	static int registrationStringSize = 0;
+
+        LOG_INFO("Sending registration message\n");
         coap_endpoint_parse(SERVER_EP, strlen(SERVER_EP), &server_ep);
         // Prepare the message
-        coap_init_message(request, COAP_TYPE_CON, COAP_POST, 0);
-        coap_set_header_uri_path(request, service_url);
-        // Set the payload 
-        const char msg[] = "{\"type\":\"med\"}";
-        coap_set_payload(request, (uint8_t *)msg, sizeof(msg) - 1);
+        coap_init_message(&request, COAP_TYPE_CON, COAP_POST, 0);
+        coap_set_header_uri_path(&request, service_url);
+        memset(registrationString, 0x00, 100);
+        registrationStringSize = snprintf(registrationString, 100, SENSOR_TYPE, 40);
+        coap_set_payload(&request, (uint8_t *)registrationString, registrationStringSize);
 
-        COAP_BLOCKING_REQUEST(&server_ep, request, client_chunk_handler);
+        COAP_BLOCKING_REQUEST(&server_ep, &request, client_chunk_handler);
 
-        // END REGISTRATION -------------------------------------------
+        PROCESS_WAIT_UNTIL(etimer_expired(&wait_registration));
     }
-
-  LOG_INFO("ATTUATORE MASCHERA ATTIVATO\n");
-
-  coap_activate_resource(&res_heartbeat, "resheartbeat");
-
-  while(1)
-  {
-    PROCESS_WAIT_EVENT();
-  }
-
-  PROCESS_END();
-
-  /*
-  button_hal_button_t *btn; 
-	
-  btn = button_hal_get_by_index(0);
-  printf("Device button count: %u.\n", button_hal_button_count);
-  if(btn) 
-  { 
-		printf("%s on pin %u with ID=0, Logic=%s, Pull=%s\n",
-		BUTTON_HAL_GET_DESCRIPTION(btn), btn->pin,
-		btn->negative_logic ? "Negative" : "Positive",
-		btn->pull == GPIO_HAL_PIN_CFG_PULL_UP ? "Pull Up" : "Pull Down");
-  }
-
-  while(1) 
-  {
-    PROCESS_WAIT_EVENT_UNTIL(ev==button_hal_press_event);
-    
-    if(ev == button_hal_press_event && (leds_get() & LEDS_RED))
-    {
-        //the red led showes danger and the button of the sensor is pressed
-        btn = (button_hal_button_t *)data;
-		printf("Press event");
-        printf("Button pressed while LED is red\n");
-        leds_set(LEDS_GREEN);
-            
-    }
-
-  }         
-  */             
-
+#endif
+	PROCESS_END();
 }

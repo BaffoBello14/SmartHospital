@@ -39,7 +39,7 @@ static void type_put_handler(coap_message_t *request, coap_message_t *response, 
         LOG_INFO("MEDICINE TYPE 1\n");
     } else if(strncmp(type, "2", len) == 0) {
         medicine_type = 2;
-        leds_set(LEDS_GREEN);
+        leds_set(LEDS_RED);
         LOG_INFO("MEDICINE TYPE 2\n");
     }
     else

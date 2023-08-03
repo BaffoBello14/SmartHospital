@@ -39,7 +39,7 @@ static void shock_put_handler(coap_message_t *request, coap_message_t *response,
         LOG_INFO("DEFIBRILLATOR ON LOW\n");
     } else if(strncmp(level, "4", len) == 0) {
         shock_level = 4;
-        leds_set(LEDS_GREEN);
+        leds_set(LEDS_RED);
         LOG_INFO("DEFIBRILLATOR ON HIGH\n");
     }
     else

@@ -33,13 +33,13 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
     oxygen_level = atoi(level);
     
     if(oxygen_level == 0) {
-        leds_set(LEDS_RED);
+        leds_set(LEDS_OFF);
         LOG_INFO("Oxygen mask OFF\n");
     } else if(oxygen_level == 1) {
         leds_set(LEDS_BLUE);
         LOG_INFO("Oxygen mask ON LOW\n");
     } else if(oxygen_level == 2) {
-        leds_set(LEDS_BLUE);
+        leds_set(LEDS_RED);
         LOG_INFO("Oxygen mask ON HIGH\n");
     } else {
         goto error;

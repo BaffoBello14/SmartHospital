@@ -40,7 +40,7 @@ static void quantity_put_handler(coap_message_t *request, coap_message_t *respon
         LOG_INFO("MEDICINE QUANTITY LOW\n");
     } else if(strncmp(quantity, "2", len) == 0 && medicine_type != 0) {
         medicine_quantity = 2;
-        leds_set(LEDS_GREEN);
+        leds_set(LEDS_RED);
         LOG_INFO("MEDICINE QUANTITY HIGH\n");
     }
     else
