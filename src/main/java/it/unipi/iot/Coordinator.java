@@ -58,7 +58,7 @@ public class Coordinator extends CoapServer implements MqttCallback {
             // Using DB class method to register actuator
             try 
             {
-                DB.replaceActuator(ip, type, "ON");
+                DB.replaceActuator(ip, type);
                 System.out.println("Actuator registered successfully.");
                 exchange.respond(ResponseCode.CREATED);
             } 

@@ -47,9 +47,9 @@ public class DB {
         executeUpdate(query, id, Float.toString(value));
     }
 
-    public static void replaceActuator(String ip, String type, String status) throws SQLException {
-        String query = "REPLACE INTO iot.actuator (ip, type, status) VALUES (?, ?, ?)";
-        executeUpdate(query, ip, type, status);
+    public static void replaceActuator(String ip, String type) throws SQLException {
+        String query = "REPLACE INTO iot.actuator (ip, type) VALUES (?, ?)";
+        executeUpdate(query, ip, type);
     }
 
     public static void deleteActuator(String ip) throws SQLException {
@@ -79,8 +79,6 @@ public class DB {
         {
             db = getDb();
         }
-        // PreparedStatement ps = isActive ? db.prepareStatement("UPDATE actuators SET status = ? WHERE ip = ?") : db.prepareStatement("UPDATE actuators SET status = 0 WHERE ip = ?");
-        // PreparedStatement ps = db.prepareStatement("UPDATE actuators SET status = 1 WHERE ip = ?");
         PreparedStatement ps = db.prepareStatement("UPDATE actuators SET status = ? WHERE ip = ?");
         ps.setInt(1, isActive ? Integer.parseInt(patientId) : 0);
         ps.setString(2, ip);

@@ -17,6 +17,7 @@
 #include <string.h>
 #include <strings.h>
 #include <stdbool.h>
+
 /*---------------------------------------------------------------------------*/
 #define LOG_MODULE "cardio"
 #ifdef MQTT_CLIENT_CONF_LOG_LEVEL
@@ -73,41 +74,21 @@ static char sub_topic[BUFFER_SIZE];
 #define STATE_MACHINE_PERIODIC     (CLOCK_SECOND >> 1)
 static struct etimer periodic_timer;
 static struct etimer reset_timer;
-
-/*---------------------------------------------------------------------------*/
-/*
- * The main MQTT buffers.
- * We will need to increase if we start publishing more data.
- */
-#define APP_BUFFER_SIZE 512
-static char app_buffer[APP_BUFFER_SIZE];
-/*---------------------------------------------------------------------------*/
-static struct mqtt_message *msg_ptr = 0;
-
-static struct mqtt_connection conn;
-
-
-/*---------------------------------------------------------------------------*/
-PROCESS(cardio_process, "Cardio process");
-
-// static int level = 50;
-// static bool charge = false;
-// static bool danger = false;
-
+// rgb_led_set(RGB_LED_RED);
 static bool on_off = false;
 
-static int heartbeat = 80;  // Initial heartbeat value
+static int cardio = 60;  // Initial heart rate value
 
-int generateRandomHeartbeat(int input) {
+int generateRandomCardio(int input) {
     // Define the range
-    int range = 70;
+    int range = 10;
     
-    // Calculate the minimum and maximum heartbeat values
-    int min_heartbeat = input - range;
-    int max_heartbeat = input + range;
+    // Calculate the minimum and maximum heart rate values
+    int min_cardio = input - range;
+    int max_cardio = input + range;
     
-    // Generate a random heartbeat within the range
-    int output = (rand() % (max_heartbeat - min_heartbeat + 1)) + min_heartbeat;
+    // Generate a random heart rate within the range
+    int output = (rand() % (max_cardio - min_cardio + 1)) + min_cardio;
     
     return output;
 }
@@ -116,7 +97,7 @@ int generateRandomHeartbeat(int input) {
 static void
 pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk, uint16_t chunk_len){
   printf("Pub Handler: topic='%s' (len=%u), chunk_len=%u\n", topic, topic_len, chunk_len);
-  if(strcmp(topic, "actuator_bathFloat") == 0) {
+  if(strcmp(topic, "actuator_cardio") == 0) {
     printf("Received Actuator command\n");
     if(strcmp((const char*) chunk, "start") == 0) 
     {
@@ -241,7 +222,7 @@ PROCESS_THREAD(cardio_process, ev, data)
       
       if(state == STATE_CONNECTED){
         // Subscribe to a topic
-        strcpy(sub_topic,"actuator_bathFloat");
+        strcpy(sub_topic,"actuator_cardio");
         status = mqtt_subscribe(&conn, NULL, sub_topic, MQTT_QOS_LEVEL_0);
         printf("Subscribing!\n");
         if(status == MQTT_STATUS_OUT_QUEUE_FULL) {
@@ -256,13 +237,9 @@ PROCESS_THREAD(cardio_process, ev, data)
         // Publish something
         sprintf(pub_topic, "%s", "status");
 
-        heartbeat = generateRandomHeartbeat(heartbeat);
+        cardio = generateRandomCardio(cardio);
 
-        // sprintf(app_buffer, "Heartbeat: %d", heartbeat);
-
-        // printf("HEARTBEAT: %d\n", heartbeat);
-
-        sprintf(app_buffer, "node: %d, heartbeat: %d\n", node_id, heartbeat);
+        sprintf(app_buffer, "node: %d, cardio: %d\n", node_id, cardio);
         printf("Hello, here are the info: %s", app_buffer);
 
         mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer, strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);

@@ -17,8 +17,9 @@
 #include <string.h>
 #include <strings.h>
 #include <stdbool.h>
+
 /*---------------------------------------------------------------------------*/
-#define LOG_MODULE "mqtt-client-bath-float"
+#define LOG_MODULE "troponin"
 #ifdef MQTT_CLIENT_CONF_LOG_LEVEL
 #define LOG_LEVEL MQTT_CLIENT_CONF_LOG_LEVEL
 #else
@@ -52,8 +53,8 @@ static uint8_t state;
 #define STATE_DISCONNECTED        5
 
 /*---------------------------------------------------------------------------*/
-PROCESS_NAME(mqtt_client_process);
-AUTOSTART_PROCESSES(&mqtt_client_process);
+PROCESS_NAME(troponin_process);
+AUTOSTART_PROCESSES(&troponin_process);
 
 /*---------------------------------------------------------------------------*/
 /* Maximum TCP segment size for outgoing segments of our socket */
@@ -73,41 +74,21 @@ static char sub_topic[BUFFER_SIZE];
 #define STATE_MACHINE_PERIODIC     (CLOCK_SECOND >> 1)
 static struct etimer periodic_timer;
 static struct etimer reset_timer;
-
-/*---------------------------------------------------------------------------*/
-/*
- * The main MQTT buffers.
- * We will need to increase if we start publishing more data.
- */
-#define APP_BUFFER_SIZE 512
-static char app_buffer[APP_BUFFER_SIZE];
-/*---------------------------------------------------------------------------*/
-static struct mqtt_message *msg_ptr = 0;
-
-static struct mqtt_connection conn;
-
-
-/*---------------------------------------------------------------------------*/
-PROCESS(mqtt_client_process, "MQTT Client-bath-float");
-
-// static int level = 50;
-// static bool charge = false;
-// static bool danger = false;
-
+// rgb_led_set(RGB_LED_RED);
 static bool on_off = false;
 
-static int heartbeat = 80;  // Initial heartbeat value
+static double troponin = 0.1;  // Initial troponin value
 
-int generateRandomHeartbeat(int input) {
+double generateRandomTroponin(double input) {
     // Define the range
-    int range = 70;
+    double range = 0.5;
     
-    // Calculate the minimum and maximum heartbeat values
-    int min_heartbeat = input - range;
-    int max_heartbeat = input + range;
+    // Calculate the minimum and maximum troponin values
+    double min_troponin = input - range;
+    double max_troponin = input + range;
     
-    // Generate a random heartbeat within the range
-    int output = (rand() % (max_heartbeat - min_heartbeat + 1)) + min_heartbeat;
+    // Generate a random troponin level within the range
+    double output = ((double)rand() / (double)RAND_MAX) * (max_troponin - min_troponin) + min_troponin;
     
     return output;
 }
@@ -116,7 +97,7 @@ int generateRandomHeartbeat(int input) {
 static void
 pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk, uint16_t chunk_len){
   printf("Pub Handler: topic='%s' (len=%u), chunk_len=%u\n", topic, topic_len, chunk_len);
-  if(strcmp(topic, "actuator_bathFloat") == 0) {
+  if(strcmp(topic, "actuator_troponin") == 0) {
     printf("Received Actuator command\n");
     if(strcmp((const char*) chunk, "start") == 0) 
     {
@@ -150,7 +131,7 @@ mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
   case MQTT_EVENT_DISCONNECTED: {
     printf("MQTT Disconnect. Reason %u\n", *((mqtt_event_t *)data));
     state = STATE_DISCONNECTED;
-    process_poll(&mqtt_client_process);
+    process_poll(&troponin_process);
     break;
   }
   case MQTT_EVENT_PUBLISH: {
@@ -196,7 +177,7 @@ have_connectivity(void)
 }
 
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(mqtt_client_process, ev, data)
+PROCESS_THREAD(troponin_process, ev, data)
 {
 
   PROCESS_BEGIN();
@@ -212,14 +193,13 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
                      linkaddr_node_addr.u8[6], linkaddr_node_addr.u8[7]);
 
   // Broker registration                     
-  mqtt_register(&conn, &mqtt_client_process, client_id, mqtt_event,
+  mqtt_register(&conn, &troponin_process, client_id, mqtt_event,
                   MAX_TCP_SEGMENT_SIZE);
   state=STATE_INIT;
                     
   // Initialize periodic timer to check the status 
   etimer_set(&periodic_timer, PUBLISH_INTERVAL);
   etimer_set(&reset_timer, CLOCK_SECOND);
-  // rgb_led_set(RGB_LED_RED);
   /* Main loop */
   while(1) {
 
@@ -241,7 +221,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
       
       if(state == STATE_CONNECTED){
         // Subscribe to a topic
-        strcpy(sub_topic,"actuator_bathFloat");
+        strcpy(sub_topic,"actuator_troponin");
         status = mqtt_subscribe(&conn, NULL, sub_topic, MQTT_QOS_LEVEL_0);
         printf("Subscribing!\n");
         if(status == MQTT_STATUS_OUT_QUEUE_FULL) {
@@ -256,13 +236,9 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
         // Publish something
         sprintf(pub_topic, "%s", "status");
 
-        heartbeat = generateRandomHeartbeat(heartbeat);
+        troponin = generateRandomTroponin(troponin);
 
-        // sprintf(app_buffer, "Heartbeat: %d", heartbeat);
-
-        // printf("HEARTBEAT: %d\n", heartbeat);
-
-        sprintf(app_buffer, "node: %d, heartbeat: %d\n", node_id, heartbeat);
+        sprintf(app_buffer, "node: %d, troponin: %.2lf\n", node_id, troponin);
         printf("Hello, here are the info: %s", app_buffer);
 
         mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer, strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
