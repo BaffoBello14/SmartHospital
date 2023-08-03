@@ -4,10 +4,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.eclipse.californium.core.CoapResource;
 import org.eclipse.californium.core.CoapServer;
-import org.eclipse.californium.core.coap.CoAP;
 import org.eclipse.californium.core.coap.CoAP.ResponseCode;
 import org.eclipse.californium.core.server.resources.CoapExchange;
-import org.eclipse.californium.core.coap.Response;
 import org.eclipse.paho.client.mqttv3.*;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -16,8 +14,10 @@ import org.json.simple.parser.ParseException;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class Coordinator extends CoapServer implements MqttCallback {
+public class Coordinator implements MqttCallback, Runnable {
 
     private static final String MQTT_BROKER = "tcp://[::1]:1883";
     private static final String OXYGEN_TOPIC = "oxygen";
@@ -26,6 +26,7 @@ public class Coordinator extends CoapServer implements MqttCallback {
 
     private MqttClient mqttClient;
     private CoapServer coapServer;
+    private ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     public static class MyCoapResource extends CoapResource {
         public MyCoapResource(String name) {
@@ -97,11 +98,15 @@ public class Coordinator extends CoapServer implements MqttCallback {
     public Coordinator() {
         this.coapServer = new CoapServer(5683);
         this.coapServer.add(new MyCoapResource("registration"));
-        this.coapServer.start();
-
-        this.mqttClient = connectToBroker();
-        subscribeToTopics();
+        executorService.execute(this.coapServer::start);
     }
+
+    @Override
+    public void run() {
+        this.mqttClient = this.connectToBroker();
+        this.subscribeToTopics();
+    }
+
 
     private MqttClient connectToBroker() {
         String clientId = "tcp://127.0.0.1:1883";
@@ -168,5 +173,7 @@ public class Coordinator extends CoapServer implements MqttCallback {
 
     public static void main(String[] args) {
         Coordinator coordinator = new Coordinator();
+        Thread coordinatorThread = new Thread(coordinator);
+        coordinatorThread.start();
     }
 }
