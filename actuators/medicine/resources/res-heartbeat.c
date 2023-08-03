@@ -12,12 +12,23 @@
 // static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
-/* A simple actuator example, depending on the color query parameter and post variable mode, corresponding led is activated or deactivated */
+
+
+/* 
+A simple actuator example, depending on the color query parameter and post variable mode, corresponding led is activated or deactivated 
 RESOURCE(res_heartbeat,
          "title=\"hb: ?len=0..\";rt=\"Text\"",
 		 res_get_handler,
          NULL,
+     res_put_handler,
+         NULL);
+*/
+
+RESOURCE(res_heartbeat,
+         "title=\"heartbeat:?level=0|1|2 \" PUT action=<putter> ;rt=\"Control\"",
+		 res_get_handler,
          NULL,
+     res_put_handler,
          NULL);
 
 /*

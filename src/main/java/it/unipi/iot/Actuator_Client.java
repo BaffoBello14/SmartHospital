@@ -18,20 +18,8 @@ public class Actuator_Client {
         // se gli arriva ON -> accendi
         // se gli arriva OFF -> spegni
         JSONObject object = new JSONObject();
-        String action = "";
-        if(isActive==0)
-        {
-            action = "OFF";
-        }
-        else if(isActive==1)
-        {
-            action = "ON";
-        }
-        else // vuol dire che isActive == 2
-        {
-            action = "POWER";
-        }
-        object.put("action", action);
+        object.put("putter", "putter");
+        object.put("level", isActive)
         // Fa la richiesta di PUT 
         CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
         
