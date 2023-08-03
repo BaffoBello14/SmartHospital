@@ -20,9 +20,9 @@ import java.sql.SQLException;
 public class Coordinator extends CoapServer implements MqttCallback {
 
     private static final String MQTT_BROKER = "tcp://[::1]:1883";
-    private static final String OXYGEN_TOPIC = "ossigeno";
+    private static final String OXYGEN_TOPIC = "oxygen";
     private static final String CARDIO_TOPIC = "cardio";
-    private static final String TROPONIN_TOPIC = "tropomina";
+    private static final String TROPONIN_TOPIC = "troponin";
 
     private MqttClient mqttClient;
     private CoapServer coapServer;

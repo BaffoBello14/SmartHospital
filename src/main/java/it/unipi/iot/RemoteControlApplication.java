@@ -48,7 +48,7 @@ public class RemoteControlApplication implements Runnable {
         {
             return 1;
         } 
-        else // Vuol dire che è H
+        else // Vuol dire che è C
         {
             return 2;
         }
@@ -63,10 +63,10 @@ public class RemoteControlApplication implements Runnable {
                 type = "mask";
                 break;
             case 1:
-                type = "med";
+                type = "medicine";
                 break;
             case 2:
-                type = "scossa";
+                type = "defibrillator";
                 break;
             default:
                 System.out.println("Invalid control value!");
@@ -93,46 +93,48 @@ public class RemoteControlApplication implements Runnable {
         }
     }
 
-    public boolean changeActuatorStatus(String patient_id, int index, int isActive) throws SQLException 
-    {
+    public boolean changeActuatorStatus(String patient_id, int index, int isActive) throws SQLException {
         String[] newIps = pazienti.get(patient_id);
         // Recupero l'ip
         String actuatorIp = "";
-        if(pazienti.get(patient_id)[index].isEmpty())
+        if (pazienti.get(patient_id)[index].isEmpty())
             actuatorIp = DB.retrieveActuatorIP(retrieveActuatorType(index));
         else
             actuatorIp = pazienti.get(patient_id)[index];
-        if(actuatorIp.isEmpty())
-        {
+        if (actuatorIp.isEmpty()) {
             // Non ha trovato l'ip 
-            System.out.println("IP NON TROVATO\n");
+            System.out.println("ERROR: IP NOT FOUND FOR PATIENT " + patient_id);
             return false;
         }
-        // Richiedo la PUT
-        if(Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive))
-        {      
-            DB.updateActuatorStatus(actuatorIp, patient_id, isActive == 0 ? false : true); 
-            if(isActive!=0)
-            { 
-                // Va attivato
-                // Lo aggiungo alla mappa
-                newIps[index] = actuatorIp;
-                pazienti.put(patient_id, newIps);
+        
+        final int MAX_ATTEMPTS = 3;
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            try {
+                // Richiedo la PUT
+                if (Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive)) {
+                    DB.updateActuatorStatus(actuatorIp, patient_id, isActive == 0 ? false : true);
+                    if (isActive != 0) {
+                        // Va attivato
+                        // Lo aggiungo alla mappa
+                        newIps[index] = actuatorIp;
+                        pazienti.put(patient_id, newIps);
+                    } else {
+                        newIps[index] = "";
+                        pazienti.put(patient_id, newIps);
+                    }
+                    return true;
+                } else {
+                    // Errore nella PUT
+                    System.out.println("ERROR IN PUT REQUEST, ATTEMPT " + (attempt + 1));
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            else
-            {
-                newIps[index] = "";
-                pazienti.put(patient_id, newIps);
-            }
-            return true;
         }
-        else
-        {
-            // Errore nella PUT
-            System.out.println("ERRORE NELLA PUT\n");
-            return false;
-        }
+    
+        return false;
     }
+    
 
     public int checkCardio(float cardioValue)
     {
@@ -158,7 +160,7 @@ public class RemoteControlApplication implements Runnable {
     {
         int trpLevel = checkTropamine(trpValue);
         int cardioLevel = checkCardio(cardioValue);
-        int sum = trpLevel + cardioLevel;
+        /*int sum = trpLevel + cardioLevel;
         if(sum==4)
         {
             // 1. 2-2 -> 2
@@ -180,7 +182,8 @@ public class RemoteControlApplication implements Runnable {
             // 9. 1-0 -> 0
             return 0;
         }
-        return -1;
+        return -1;*/
+        return trpLevel + cardioLevel;
     }
 
     public void run() 
@@ -188,8 +191,8 @@ public class RemoteControlApplication implements Runnable {
         
         try 
         {
-            // pazienti = DB.retrieveActiveActuators();
-            List<String> typeList = Arrays.asList("oxygen_sensor", "tropamine_sensor", "heartbeat_sensor");
+            pazienti = DB.retrieveActiveActuators();
+            List<String> typeList = Arrays.asList("oxygen_sensor", "tropamine_sensor", "cardio_sensor");
             HashMap<String, Float> retrieved;
 
             for (String s : typeList) {
@@ -229,26 +232,48 @@ public class RemoteControlApplication implements Runnable {
                                 e.printStackTrace();
                             }
                         }
-                        else if(index==1 || index==2)
+                        else if(index==1)
                         {
                             float trpValue = retrieved.get("k");
                             float cardioValue = retrieved.get("c");
                             int value = calculateDanger(trpValue, cardioValue);
-                            try 
-                            {
-                                if(changeActuatorStatus(patient_id, index, value))
+                            if(value == 0 || value >= 3){
+                                try 
                                 {
-                                    System.out.println("ATTUATORE ON LIVELLO "+ value +"\n");
+                                    if(changeActuatorStatus(patient_id, index, value) && changeActuatorStatus(patient_id, index + 1, value))
+                                    {
+                                        System.out.println("ATTUATORI ON LIVELLO "+ value +"\n");
+                                    }
+                                    else
+                                    {
+                                        return;
+                                    }
                                 }
-                                else
+                                catch (SQLException e)
                                 {
-                                    return;
+                                    e.printStackTrace();
                                 }
                             }
-                            catch (SQLException e)
-                            {
-                                e.printStackTrace();
+                            else {
+                                try 
+                                {
+                                    if(changeActuatorStatus(patient_id, index, value))
+                                    {
+                                        System.out.println("ATTUATORE ON LIVELLO "+ value +"\n");
+                                    }
+                                    else
+                                    {
+                                        return;
+                                    }
+                                }
+                                catch (SQLException e)
+                                {
+                                    e.printStackTrace();
+                                }
                             }
+                        }
+                        else if(index == 2){
+                            continue;
                         }
                         else
                         {

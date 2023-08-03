@@ -7,49 +7,36 @@ import org.eclipse.californium.core.coap.MediaTypeRegistry;
 import org.json.simple.JSONObject;
 
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Actuator_Client {
 
-    public static boolean putClientRequest(String ip, String resource, int isActive) throws SQLException 
-    {
+    private static final Logger logger = Logger.getLogger(Actuator_Client.class.getName());
+
+    public static boolean putClientRequest(String ip, String resource, int isActive) throws SQLException, IllegalStateException {
         CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource);
-        // Nella putHandler
-        // se gli arriva ON -> accendi
-        // se gli arriva OFF -> spegni
         JSONObject object = new JSONObject();
-        object.put("putter", "putter");
-        object.put("level", isActive)
-        // Fa la richiesta di PUT 
+        object.put("level", isActive);
+
         CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
-        
-        if (response == null) 
-        {
-            System.err.println("An error occurred while contacting the actuator");
-            return false;
-        } 
-        else 
-        {
-            CoAP.ResponseCode code = response.getCode();
-            //System.out.println(code);
-            switch (code) 
-            {
-                case CHANGED:
-                    System.err.println("STATO CAMBIATO CORRETTAMENTE\n");
-                    return true;
-                case BAD_OPTION:
-                    System.err.println("ERRORE NEL CAMBIO STATO\n");
-                    return false;
-                default:
-                     System.err.println("ERRORE DEFAULT\n");
-                     break;
-            }
 
+        if (response == null) {
+            logger.log(Level.SEVERE, "An error occurred while contacting the actuator");
+            throw new IllegalStateException("An error occurred while contacting the actuator");
         }
-        // QUI NON CI DOVREBBE ARRIVARE MAI
-        System.out.println("QUI NON CI DEVE ARRIVARE\n");
-        return false;
+
+        CoAP.ResponseCode code = response.getCode();
+        switch (code) {
+            case CHANGED:
+                logger.log(Level.INFO, "STATO CAMBIATO CORRETTAMENTE");
+                return true;
+            case BAD_OPTION:
+                logger.log(Level.SEVERE, "ERRORE NEL CAMBIO STATO");
+                return false;
+            default:
+                logger.log(Level.WARNING, "ERRORE DEFAULT");
+                return false;
+        }
     }
-
 }
-
