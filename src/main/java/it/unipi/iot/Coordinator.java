@@ -156,7 +156,7 @@ public class Coordinator implements MqttCallback, Runnable {
                     break;
                 case CARDIO_TOPIC:
                     tableName = "cardio_sensor";
-                    value = jsonPayload.get("value").getAsInt();
+                    //value = jsonPayload.get("value").getAsInt();
                     break;
                 case TROPONIN_TOPIC:
                     tableName = "troponin_sensor";

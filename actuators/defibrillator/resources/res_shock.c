@@ -29,7 +29,7 @@ static void shock_put_handler(coap_message_t *request, coap_message_t *response,
     if(len <= 0 || len >= 20)
         goto error;
     
-    if(strncmp(level, "0", len) == 0) {
+    if(strncmp(level, "0", len) == 0 || strncmp(level, "1", len) == 0 || strncmp(level, "2", len) == 0) {
         shock_level = 0;
         leds_set(LEDS_OFF);
         LOG_INFO("DEFIBRILLATOR OFF\n");

@@ -97,7 +97,7 @@ int generateRandomCardio(int input) {
 static void
 pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk, uint16_t chunk_len){
   printf("Pub Handler: topic='%s' (len=%u), chunk_len=%u\n", topic, topic_len, chunk_len);
-  if(strcmp(topic, "actuator_cardio") == 0) {
+  if(strcmp(topic, "cardio") == 0) {
     printf("Received Actuator command\n");
     if(strcmp((const char*) chunk, "start") == 0) 
     {

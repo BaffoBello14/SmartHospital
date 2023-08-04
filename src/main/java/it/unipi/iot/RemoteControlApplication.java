@@ -231,39 +231,20 @@ public class RemoteControlApplication implements Runnable {
                             float trpValue = retrieved.get("k");
                             float cardioValue = retrieved.get("c");
                             int value = calculateDanger(trpValue, cardioValue);
-                            if(value == 0 || value >= 3){
-                                try 
+                            try 
+                            {
+                                if(changeActuatorStatus(patient_id, index, value) && changeActuatorStatus(patient_id, index + 1, value))
                                 {
-                                    if(changeActuatorStatus(patient_id, index, value) && changeActuatorStatus(patient_id, index + 1, value))
-                                    {
-                                        System.out.println("ATTUATORI ON LIVELLO "+ value +"\n");
-                                    }
-                                    else
-                                    {
-                                        return;
-                                    }
+                                    System.out.println("ATTUATORI ON LIVELLO "+ value +"\n");
                                 }
-                                catch (SQLException e)
+                                else
                                 {
-                                    e.printStackTrace();
+                                    return;
                                 }
                             }
-                            else {
-                                try 
-                                {
-                                    if(changeActuatorStatus(patient_id, index, value))
-                                    {
-                                        System.out.println("ATTUATORE ON LIVELLO "+ value +"\n");
-                                    }
-                                    else
-                                    {
-                                        return;
-                                    }
-                                }
-                                catch (SQLException e)
-                                {
-                                    e.printStackTrace();
-                                }
+                            catch (SQLException e)
+                            {
+                                e.printStackTrace();
                             }
                         }
                         else if(index == 2){
