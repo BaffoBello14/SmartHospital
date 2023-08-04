@@ -5,3 +5,6 @@ tcp*
 smartmed*
 target
 actuators/build
+sensors/oxygen/build
+sensors/cardio/build
+sensors/troponin/build

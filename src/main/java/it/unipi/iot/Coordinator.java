@@ -105,6 +105,7 @@ public class Coordinator implements MqttCallback, Runnable {
     public void run() {
         this.mqttClient = this.connectToBroker();
         this.subscribeToTopics();
+        System.out.println("Fatto");
     }
 
 
@@ -126,6 +127,7 @@ public class Coordinator implements MqttCallback, Runnable {
             this.mqttClient.subscribe(OXYGEN_TOPIC);
             this.mqttClient.subscribe(CARDIO_TOPIC);
             this.mqttClient.subscribe(TROPONIN_TOPIC);
+            System.out.println("Fatto");
         } catch (MqttException e) {
             e.printStackTrace();
         }

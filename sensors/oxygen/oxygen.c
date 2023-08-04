@@ -10,7 +10,6 @@
 #include "dev/button-hal.h"
 #include "dev/etc/rgb-led/rgb-led.h"
 #include "os/sys/log.h"
-#include "mqtt-client.h"
 #include <sys/node-id.h>
 
 #include <time.h>
@@ -89,10 +88,6 @@ static struct mqtt_connection conn;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(oxygen_process, "Oxygen process");
-
-// static int level = 50;
-// static bool charge = false;
-// static bool danger = false;
 
 static bool on_off = false;
 
@@ -241,7 +236,7 @@ PROCESS_THREAD(oxygen_process, ev, data)
       
       if(state == STATE_CONNECTED){
         // Subscribe to a topic
-        strcpy(sub_topic,"actuator_oxygen");
+        strcpy(sub_topic,"oxygen");
         status = mqtt_subscribe(&conn, NULL, sub_topic, MQTT_QOS_LEVEL_0);
         printf("Subscribing!\n");
         if(status == MQTT_STATUS_OUT_QUEUE_FULL) {
