@@ -8,3 +8,6 @@ actuators/build
 sensors/oxygen/build
 sensors/cardio/build
 sensors/troponin/build
+actuators/mask/build
+actuators/medicine/build
+actuators/defibrillator/build

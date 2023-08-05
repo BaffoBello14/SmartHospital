@@ -34,7 +34,7 @@ extern coap_resource_t res_oxygen;
 char *service_url = "/registration";
 static bool registered = false;
 
-#define SENSOR_TYPE "{\"deviceType\": \"mask\", \"sensorId\": %u}"
+#define SENSOR_TYPE "{\"type\": \"mask\", \"sensorId\": %u}"
 
 #endif
 

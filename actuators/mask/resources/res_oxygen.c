@@ -11,15 +11,26 @@
 
 
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
+static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
 RESOURCE(res_oxygen,
          "title=\"Oxygen mask actuator\";rt=\"Control\"",
-         NULL,
+         res_get_handler,
          NULL,
          res_put_handler,
          NULL);
 
 static int oxygen_level = 0;
+
+static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {
+    // Convert oxygen level to a string
+    char level_str[3];
+    snprintf(level_str, sizeof(level_str), "%d", oxygen_level);
+
+    // Set payload of the response to the current oxygen level
+    coap_set_payload(response, level_str, strlen(level_str));
+    coap_set_status_code(response, CONTENT_2_05);
+}
 
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {
     size_t len = 0;
@@ -33,7 +44,7 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
     oxygen_level = atoi(level);
     
     if(oxygen_level == 0) {
-        leds_set(LEDS_OFF);
+        leds_set(LEDS_COLOUR_NONE);
         LOG_INFO("Oxygen mask OFF\n");
     } else if(oxygen_level == 1) {
         leds_set(LEDS_BLUE);
@@ -45,7 +56,7 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
         goto error;
     }
 
-    coap_set_status_code(response, COAP_CHANGED_2_04);
+    coap_set_status_code(response, CHANGED_2_04);
     return;
 
 error:

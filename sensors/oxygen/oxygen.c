@@ -82,16 +82,16 @@ static struct etimer reset_timer;
 #define APP_BUFFER_SIZE 512
 static char app_buffer[APP_BUFFER_SIZE];
 /*---------------------------------------------------------------------------*/
-static struct mqtt_message *msg_ptr = 0;
+//static struct mqtt_message *msg_ptr = 0;
 
 static struct mqtt_connection conn;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(oxygen_process, "Oxygen process");
 
-static bool on_off = false;
-
 static int oxygen = 99;  // Initial oxygen level value
+
+static char new_id[6] = "o001";
 
 int generateRandomOxygen(int input) {
     // Define the range
@@ -103,38 +103,13 @@ int generateRandomOxygen(int input) {
     
     // Generate a random oxygen level within the range
     int output = (rand() % (max_oxygen - min_oxygen + 1)) + min_oxygen;
+
+    if(output > 100) output = 100;
     
     return output;
 }
 
-/*---------------------------------------------------------------------------*/
-static void
-pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk, uint16_t chunk_len){
-  printf("Pub Handler: topic='%s' (len=%u), chunk_len=%u\n", topic, topic_len, chunk_len);
-  if(strcmp(topic, "oxygen") == 0) {
-    printf("Received Actuator command\n");
-    if(strcmp((const char*) chunk, "start") == 0) 
-    {
-        LOG_INFO("SENSOR ACTIVE\n");
-        // rgb_led_set(RGB_LED_GREEN);
-        on_off = true;
-    } else if(strcmp((const char*) chunk, "stop") == 0) 
-    {
-      LOG_INFO("SENSOR STOPPED\n");
-      on_off = false;
-    }
-    else
-    {
-      LOG_INFO("UNRECOGNIZED COMMAND!\nPOSSIBLE COMMANDS: 'start' or 'stop'");
-    }
-  }
-  else {
-    LOG_ERR("INVALID TOPIC!\nVALID TOPICS: start, stop");
-  }
-}
-/*---------------------------------------------------------------------------*/
-static void
-mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
+static void mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
 {
   switch(event) {
   case MQTT_EVENT_CONNECTED: {
@@ -148,11 +123,6 @@ mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
     process_poll(&oxygen_process);
     break;
   }
-  case MQTT_EVENT_PUBLISH: {
-    msg_ptr = data;
-    pub_handler(msg_ptr->topic, strlen(msg_ptr->topic), msg_ptr->payload_chunk, msg_ptr->payload_length);
-    break;
-  }
   case MQTT_EVENT_SUBACK: {
 #if MQTT_311
     mqtt_suback_event_t *suback_event = (mqtt_suback_event_t *)data;
@@ -161,6 +131,7 @@ mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
     } else {
       printf("Application failed to subscribe to topic (ret code %x)\n", suback_event->return_code);
     }
+    
 #else
     printf("Application is subscribed to topic successfully\n");
 #endif
@@ -174,14 +145,17 @@ mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
     printf("Publishing complete.\n");
     break;
   }
+  case 4: {
+    break;
+  }
+
   default:
     printf("Application got an unhandled MQTT event: %i\n", event);
     break;
   }
 }
 
-static bool
-have_connectivity(void)
+static bool have_connectivity(void)
 {
   if(uip_ds6_get_global(ADDR_PREFERRED) == NULL ||
      uip_ds6_defrt_choose() == NULL) {
@@ -195,7 +169,6 @@ PROCESS_THREAD(oxygen_process, ev, data)
 {
 
   PROCESS_BEGIN();
-
   mqtt_status_t status;
   char broker_address[CONFIG_IP_ADDR_STR_LEN];
   printf("MQTT Client Process\n");
@@ -247,19 +220,19 @@ PROCESS_THREAD(oxygen_process, ev, data)
         state = STATE_SUBSCRIBED;
       }
 
-      if(state == STATE_SUBSCRIBED && on_off){
+      if(state == STATE_SUBSCRIBED){
         // Publish something
-        sprintf(pub_topic, "%s", "status");
+        sprintf(pub_topic, "%s", "oxygen");
 
         oxygen = generateRandomOxygen(oxygen);
 
-        sprintf(app_buffer, "node: %d, oxygen: %d\n", node_id, oxygen);
+        sprintf(app_buffer, "{\"id\": \"%s\", \"value\": %d}", new_id, oxygen);
         printf("Hello, here are the info: %s", app_buffer);
 
         mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer, strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
       } else if (state == STATE_DISCONNECTED){
         LOG_ERR("Disconnected from MQTT broker\n");  
-        on_off = false;
+        //on_off = false;
         // Recover from error
         state = STATE_INIT;
       }

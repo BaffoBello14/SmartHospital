@@ -34,11 +34,11 @@ public class RemoteControlApplication implements Runnable {
 
     public int retrieveSensorType(String id)
     {
-        if (id.startsWith("O"))
+        if (id.startsWith("o"))
         {
             return 0;
         }
-        else if (id.startsWith("T"))
+        else if (id.startsWith("t"))
         {
             return 1;
         } 
@@ -88,37 +88,52 @@ public class RemoteControlApplication implements Runnable {
     }
 
     public boolean changeActuatorStatus(String patient_id, int index, int isActive) throws SQLException {
-        String[] newIps = pazienti.get(patient_id);
-        // Recupero l'ip
-        String actuatorIp = "";
-        if (pazienti.get(patient_id)[index].isEmpty())
-            actuatorIp = DB.retrieveActuatorIP(retrieveActuatorType(index));
-        else
-            actuatorIp = pazienti.get(patient_id)[index];
-        if (actuatorIp.isEmpty()) {
-            // Non ha trovato l'ip 
-            System.out.println("ERROR: IP NOT FOUND FOR PATIENT " + patient_id);
-            return false;
+        // Check if the patient exists in the pazienti map
+        String[] patientData = pazienti.get(patient_id);
+        if (patientData == null) {
+            if (isActive == 0) {
+                return true;  // No actuators to turn off
+            } else {
+                // Add new patient to the map
+                patientData = new String[]{"", "", ""};
+                pazienti.put(patient_id, patientData);
+            }
         }
-        
+    
+        // Check if a valid IP for the actuator already exists
+        String actuatorIp = patientData[index];
+        if (actuatorIp != null && !"".equals(actuatorIp)) {
+            return true;  // The actuator IP already exists
+        }
+    
+        // If the actuator does not need to be activated and its IP does not exist in the map, return true
+        if (isActive == 0) {
+            return true;
+        }
+    
+        // Search for a new IP for the actuator
+        actuatorIp = DB.retrieveActuatorIP(retrieveActuatorType(index));
+        if (actuatorIp.isEmpty()) {
+            System.out.println("ERROR: IP NOT FOUND FOR PATIENT " + patient_id);
+            // Check if the patientData array is empty, if so remove the entry from the map
+            if (Arrays.stream(patientData).allMatch(s -> s == null || s.isEmpty())) {
+                pazienti.remove(patient_id);
+            }
+            return false;  // No IP available
+        }
+    
+        // Try to change actuator status
         final int MAX_ATTEMPTS = 3;
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             try {
-                // Richiedo la PUT
+                // Make the PUT request
                 if (Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive)) {
-                    DB.updateActuatorStatus(actuatorIp, patient_id, isActive == 0 ? false : true);
-                    if (isActive != 0) {
-                        // Va attivato
-                        // Lo aggiungo alla mappa
-                        newIps[index] = actuatorIp;
-                        pazienti.put(patient_id, newIps);
-                    } else {
-                        newIps[index] = "";
-                        pazienti.put(patient_id, newIps);
-                    }
-                    return true;
+                    DB.updateActuatorStatus(actuatorIp, patient_id, isActive != 0);
+                    patientData[index] = actuatorIp;  // Save the IP
+                    pazienti.put(patient_id, patientData);
+                    return true;  // Success
                 } else {
-                    // Errore nella PUT
+                    // Error in the PUT request
                     System.out.println("ERROR IN PUT REQUEST, ATTEMPT " + (attempt + 1));
                 }
             } catch (Exception e) {
@@ -126,7 +141,13 @@ public class RemoteControlApplication implements Runnable {
             }
         }
     
-        return false;
+        // Check if the patientData array is empty, if so remove the entry from the map
+        if (Arrays.stream(patientData).allMatch(s -> s == null || s.isEmpty())) {
+            pazienti.remove(patient_id);
+        }
+    
+        System.out.println("Failed to activate actuator for patient " + patient_id);
+        return false;  // Failure
     }
     
 
@@ -154,120 +175,47 @@ public class RemoteControlApplication implements Runnable {
     {
         int trpLevel = checkTroponin(trpValue);
         int cardioLevel = checkCardio(cardioValue);
-        /*int sum = trpLevel + cardioLevel;
-        if(sum==4)
-        {
-            // 1. 2-2 -> 2
-            return 2;
-        }
-        else if(sum==3 || sum==2)
-        {
-            // 2. 1-1 -> 1
-            // 3. 1-2 -> 1
-            // 4. 2-1 -> 1
-            // 5. 0-2 -> 1
-            // 6. 2-0 -> 1
-            return 1;
-        }
-        else if(sum==1 || sum==0)
-        {
-            // 7. 0-0 -> 0 
-            // 8. 0-1 -> 0
-            // 9. 1-0 -> 0
-            return 0;
-        }
-        return -1;*/
         return trpLevel + cardioLevel;
     }
 
-    public void run() 
-    {
-        
-        try 
-        {
+    public void run() {
+        try {
             pazienti = DB.retrieveActiveActuators();
-            List<String> typeList = Arrays.asList("oxygen_sensor", "troponin_sensor", "cardio_sensor");
-            HashMap<String, Float> retrieved;
-
-            for (String s : typeList) {
-                // Recupero i dati del sensore s dal DB
-                retrieved = new HashMap<>(DB.retrieveSensorData(s));
-
-                if (retrieved.isEmpty()) 
-                {
-                    System.out.println("NESSUN DATO RECUPERATO\n");
-                } 
-                else 
-                {
-                    for (String key : retrieved.keySet()) 
-                    {
-                        // Tolgo la prima lettera che corrisponde al tipo di sensore
-                        String patient_id = key.substring(1, key.length());
-                        int index = retrieveSensorType(key);
-
-                        // Controllo che tipo di dato abbiamo
-                        if(index==0) // OSSIGENO
-                        {
-                            // Analizziamo il valore del ossigeno
-                            int value = retrieved.get(key) <= DNG_OX_TH ? 2 : retrieved.get(key) <= CTR_OX_TH ? 1 : 0;
-                            try 
-                            {
-                                if(changeActuatorStatus(patient_id, index, value))
-                                {
-                                    System.out.println("ATTUATORE ON LIVELLO "+ value +"\n");
-                                }
-                                else
-                                {
-                                    return;
-                                }
-                            }
-                            catch (SQLException e)
-                            {
-                                e.printStackTrace();
-                            }
-                        }
-                        else if(index==1)
-                        {
-                            float trpValue = retrieved.get("k");
-                            float cardioValue = retrieved.get("c");
-                            int value = calculateDanger(trpValue, cardioValue);
-                            try 
-                            {
-                                if(changeActuatorStatus(patient_id, index, value) && changeActuatorStatus(patient_id, index + 1, value))
-                                {
-                                    System.out.println("ATTUATORI ON LIVELLO "+ value +"\n");
-                                }
-                                else
-                                {
-                                    return;
-                                }
-                            }
-                            catch (SQLException e)
-                            {
-                                e.printStackTrace();
-                            }
-                        }
-                        else if(index == 2){
-                            continue;
-                        }
-                        else
-                        {
-                            // NON CI DEVE ARRIVARE 
-                            System.out.println("SENSORE NON RICONOSCIUTOOO\n");
-                        }
-                    }
+            int i = 1;
+            for (;;) {
+                //System.out.println(i);
+                String patientId = String.format("%03d", i);
+                List<Float> sensorValues = DB.retrieveSensorData(patientId);
+    
+                if (sensorValues == null) {
+                    continue;  // Vai al prossimo paziente se non ci sono dati per questo
                 }
+    
+                System.out.println("Data for patient " + patientId + ": " + sensorValues);
+    
+                // Oxygen
+                int value = sensorValues.get(0) <= DNG_OX_TH ? 2 : sensorValues.get(0) <= CTR_OX_TH ? 1 : 0;
+                if (changeActuatorStatus(patientId, 0, value)) {
+                    System.out.println("Oxygen actuator on level " + value);
+                } else {
+                    System.out.println("Call the doctor!!! (oxygen)");
+                }
+    
+                // Troponin and Cardio
+                float trpValue = sensorValues.get(1);
+                float cardioValue = sensorValues.get(2);
+                value = calculateDanger(trpValue, cardioValue);
+                if (changeActuatorStatus(patientId, 1, value) && changeActuatorStatus(patientId, 2, value)) {
+                    System.out.println("Actuators on level " + value);
+                } else {
+                    System.out.println("Call the doctor!!! (troponin and cardio)");
+                }
+                i++;
+                if(i == 999) i = 1;
             }
-        } 
-        catch (SQLException e) 
-        {
+        } catch (SQLException e) {
             e.printStackTrace();
-        } 
-        finally 
-        {
-            Thread.currentThread().interrupt();
         }
-
     }
 
     public static void main(String[] args) 

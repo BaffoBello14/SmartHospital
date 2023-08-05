@@ -39,4 +39,12 @@ public class Actuator_Client {
                 return false;
         }
     }
+
+    public static boolean checkActuatorStatus(String ip, String resource) {
+        CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource);
+        CoapResponse response = client.get();
+    
+        return response != null && response.getCode() == CoAP.ResponseCode.CONTENT;
+    }
+    
 }
