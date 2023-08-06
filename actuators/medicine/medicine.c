@@ -35,7 +35,7 @@ extern coap_resource_t res_quantity;
 char *service_url = "/registration";
 static bool registered = false;
 
-#define SENSOR_TYPE "{\"deviceType\": \"medicine\", \"sensorId\": %u}"
+#define SENSOR_TYPE "{\"type\": \"medicine\", \"sensorId\": %u}"
 
 #endif
 

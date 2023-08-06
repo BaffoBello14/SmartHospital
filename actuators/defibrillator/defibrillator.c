@@ -34,7 +34,7 @@ extern coap_resource_t res_shock;
 char *service_url = "/registration";
 static bool registered = false;
 
-#define SENSOR_TYPE "{\"deviceType\": \"defibrillator\", \"sensorId\": %u}"
+#define SENSOR_TYPE "{\"type\": \"defibrillator\", \"sensorId\": %u}"
 
 #endif
 

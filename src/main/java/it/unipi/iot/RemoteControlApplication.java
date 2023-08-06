@@ -225,7 +225,7 @@ public class RemoteControlApplication implements Runnable {
                         boolean actuator1 = "".equals(pazienti.get(patientId)[1]) || changeActuatorStatus(patientId, 1, value);
                         boolean actuator2 = "".equals(pazienti.get(patientId)[2]) || changeActuatorStatus(patientId, 2, value);
                         if (!actuator1 && value < 3) {
-                            System.out.println("Call the doctor!!! (troponin and cardio)");
+                            System.out.println("Call the doctor!!! heart desease");
                         }
                         else if (!actuator2 && value < 4) {
                             changeActuatorStatus(patientId, 2, value + 1);

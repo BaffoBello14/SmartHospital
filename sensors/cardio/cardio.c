@@ -10,7 +10,6 @@
 #include "dev/button-hal.h"
 #include "dev/etc/rgb-led/rgb-led.h"
 #include "os/sys/log.h"
-#include "mqtt-client.h"
 #include <sys/node-id.h>
 
 #include <time.h>
@@ -74,10 +73,23 @@ static char sub_topic[BUFFER_SIZE];
 #define STATE_MACHINE_PERIODIC     (CLOCK_SECOND >> 1)
 static struct etimer periodic_timer;
 static struct etimer reset_timer;
-// rgb_led_set(RGB_LED_RED);
-static bool on_off = false;
+
+/*---------------------------------------------------------------------------*/
+/*
+ * The main MQTT buffers.
+ * We will need to increase if we start publishing more data.
+ */
+#define APP_BUFFER_SIZE 512
+static char app_buffer[APP_BUFFER_SIZE];
+/*---------------------------------------------------------------------------*/
+static struct mqtt_connection conn;
+
+/*---------------------------------------------------------------------------*/
+PROCESS(cardio_process, "Cardio process");
 
 static int cardio = 60;  // Initial heart rate value
+
+static char new_id[6] = "c001";
 
 int generateRandomCardio(int input) {
     // Define the range
@@ -89,38 +101,13 @@ int generateRandomCardio(int input) {
     
     // Generate a random heart rate within the range
     int output = (rand() % (max_cardio - min_cardio + 1)) + min_cardio;
-    
+
+    if(output < 0) output = 0;
+
     return output;
 }
 
-/*---------------------------------------------------------------------------*/
-static void
-pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk, uint16_t chunk_len){
-  printf("Pub Handler: topic='%s' (len=%u), chunk_len=%u\n", topic, topic_len, chunk_len);
-  if(strcmp(topic, "cardio") == 0) {
-    printf("Received Actuator command\n");
-    if(strcmp((const char*) chunk, "start") == 0) 
-    {
-        LOG_INFO("SENSOR ACTIVE\n");
-        // rgb_led_set(RGB_LED_GREEN);
-        on_off = true;
-    } else if(strcmp((const char*) chunk, "stop") == 0) 
-    {
-      LOG_INFO("SENSOR STOPPED\n");
-      on_off = false;
-    }
-    else
-    {
-      LOG_INFO("UNRECOGNIZED COMMAND!\nPOSSIBLE COMMANDS: 'start' or 'stop'");
-    }
-  }
-  else {
-    LOG_ERR("INVALID TOPIC!\nVALID TOPICS: start, stop");
-  }
-}
-/*---------------------------------------------------------------------------*/
-static void
-mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
+static void mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
 {
   switch(event) {
   case MQTT_EVENT_CONNECTED: {
@@ -134,11 +121,6 @@ mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
     process_poll(&cardio_process);
     break;
   }
-  case MQTT_EVENT_PUBLISH: {
-    msg_ptr = data;
-    pub_handler(msg_ptr->topic, strlen(msg_ptr->topic), msg_ptr->payload_chunk, msg_ptr->payload_length);
-    break;
-  }
   case MQTT_EVENT_SUBACK: {
 #if MQTT_311
     mqtt_suback_event_t *suback_event = (mqtt_suback_event_t *)data;
@@ -147,6 +129,7 @@ mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
     } else {
       printf("Application failed to subscribe to topic (ret code %x)\n", suback_event->return_code);
     }
+    
 #else
     printf("Application is subscribed to topic successfully\n");
 #endif
@@ -200,7 +183,7 @@ PROCESS_THREAD(cardio_process, ev, data)
   // Initialize periodic timer to check the status 
   etimer_set(&periodic_timer, PUBLISH_INTERVAL);
   etimer_set(&reset_timer, CLOCK_SECOND);
-  // rgb_led_set(RGB_LED_RED);
+
   /* Main loop */
   while(1) {
 
@@ -222,7 +205,7 @@ PROCESS_THREAD(cardio_process, ev, data)
       
       if(state == STATE_CONNECTED){
         // Subscribe to a topic
-        strcpy(sub_topic,"actuator_cardio");
+        strcpy(sub_topic,"cardio");
         status = mqtt_subscribe(&conn, NULL, sub_topic, MQTT_QOS_LEVEL_0);
         printf("Subscribing!\n");
         if(status == MQTT_STATUS_OUT_QUEUE_FULL) {
@@ -233,19 +216,18 @@ PROCESS_THREAD(cardio_process, ev, data)
         state = STATE_SUBSCRIBED;
       }
 
-      if(state == STATE_SUBSCRIBED && on_off){
+      if(state == STATE_SUBSCRIBED){
         // Publish something
-        sprintf(pub_topic, "%s", "status");
+        sprintf(pub_topic, "%s", "cardio");
 
         cardio = generateRandomCardio(cardio);
 
-        sprintf(app_buffer, "node: %d, cardio: %d\n", node_id, cardio);
+        sprintf(app_buffer, "{\"id\": \"%s\", \"value\": %d}", new_id, cardio);
         printf("Hello, here are the info: %s", app_buffer);
 
         mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer, strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
       } else if (state == STATE_DISCONNECTED){
         LOG_ERR("Disconnected from MQTT broker\n");  
-        on_off = false;
         // Recover from error
         state = STATE_INIT;
       }
