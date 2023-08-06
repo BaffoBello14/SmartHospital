@@ -10,10 +10,9 @@ import org.eclipse.paho.client.mqttv3.*;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import java.nio.charset.StandardCharsets;
 
 import java.net.InetAddress;
-import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -34,21 +33,16 @@ public class Coordinator implements MqttCallback, Runnable {
         }
 
         @Override
-        public void handlePOST(CoapExchange exchange) 
-        {
+        public void handlePOST(CoapExchange exchange) {
             System.out.println("STARTING HANDLE POST\n");
 
-            // Extracting request information
             String s = new String(exchange.getRequestPayload());
             JSONObject obj;
             JSONParser parser = new JSONParser();
-            
-            try 
-            {
+
+            try {
                 obj = (JSONObject) parser.parse(s);
-            } 
-            catch (ParseException e) 
-            {
+            } catch (ParseException e) {
                 throw new RuntimeException(e);
             }
 
@@ -57,42 +51,23 @@ public class Coordinator implements MqttCallback, Runnable {
             String type = (String) obj.get("type");
 
             // Using DB class method to register actuator
-            try 
-            {
-                DB.replaceActuator(ip, type);
-                System.out.println("Actuator registered successfully.");
-                exchange.respond(ResponseCode.CREATED);
-            } 
-            catch (SQLException e) 
-            {
-                e.printStackTrace();
-                exchange.respond(ResponseCode.INTERNAL_SERVER_ERROR);
-            }
+            DB.replaceActuator(ip, type);
+            System.out.println("Actuator registered successfully.");
+            exchange.respond(ResponseCode.CREATED);
         }
 
         @Override
-        public void handleDELETE(CoapExchange exchange) 
-        {
+        public void handleDELETE(CoapExchange exchange) {
             System.out.println("STARTING HANDLE DELETE\n");
 
-            // Extracting request information
             InetAddress address = exchange.getSourceAddress();
             String ip = address.toString().substring(1); // Removes initial slash
 
             // Using DB class method to delete actuator
-            try 
-            {
-                DB.deleteActuator(ip);
-                System.out.println("Actuator deleted successfully.");
-                exchange.respond(ResponseCode.DELETED);
-            } 
-            catch (SQLException e) 
-            {
-                e.printStackTrace();
-                exchange.respond(ResponseCode.INTERNAL_SERVER_ERROR);
-            }
+            DB.deleteActuator(ip);
+            System.out.println("Actuator deleted successfully.");
+            exchange.respond(ResponseCode.DELETED);
         }
-
     }
 
     public Coordinator() {
@@ -106,7 +81,6 @@ public class Coordinator implements MqttCallback, Runnable {
         this.mqttClient = this.connectToBroker();
         this.subscribeToTopics();
     }
-
 
     private MqttClient connectToBroker() {
         String clientId = "tcp://127.0.0.1:1883";
@@ -157,18 +131,13 @@ public class Coordinator implements MqttCallback, Runnable {
                     break;
                 case CARDIO_TOPIC:
                     tableName = "cardio_sensor";
-                    //value = jsonPayload.get("value").getAsInt();
                     break;
                 case TROPONIN_TOPIC:
                     tableName = "troponin_sensor";
                     break;
             }
 
-            try {
-                DB.insertSensorData(tableName, sensorId, value);
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            DB.insertSensorData(tableName, sensorId, value);
         }
     }
 

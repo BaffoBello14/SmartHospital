@@ -9,7 +9,6 @@
 #define LOG_MODULE "res_oxygen"
 #define LOG_LEVEL LOG_LEVEL_DBG
 
-
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
@@ -41,7 +40,20 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
     if(len <= 0 || len >= 20)
         goto error;
 
-    oxygen_level = atoi(level);
+    // Create a new buffer to include the null terminator
+    char level_buffer[21]; // 20 for the payload, 1 for the null terminator
+    memcpy(level_buffer, level, len);
+    level_buffer[len] = '\0'; // Add null terminator
+
+    const char *level_key = "level:";
+    char *level_start = strstr(level_buffer, level_key);
+
+    if(level_start == NULL) {
+        goto error;  // "level:" not found in the payload
+    } else {
+        level_start += strlen(level_key);  // Move the pointer to the start of the number
+        oxygen_level = atoi(level_start);
+    }
     
     if(oxygen_level == 0) {
         leds_set(LEDS_COLOUR_NONE);

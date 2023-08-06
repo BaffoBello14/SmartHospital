@@ -103,23 +103,19 @@ public class RemoteControlApplication implements Runnable {
         // Check if a valid IP for the actuator already exists
         String actuatorIp = patientData[index];
         if (actuatorIp != null && !"".equals(actuatorIp)) {
-            return true;  // The actuator IP already exists
+            
         }
-    
-        // If the actuator does not need to be activated and its IP does not exist in the map, return true
-        if (isActive == 0) {
-            return true;
-        }
-    
-        // Search for a new IP for the actuator
-        actuatorIp = DB.retrieveActuatorIP(retrieveActuatorType(index));
-        if (actuatorIp.isEmpty()) {
-            System.out.println("ERROR: IP NOT FOUND FOR PATIENT " + patient_id);
-            // Check if the patientData array is empty, if so remove the entry from the map
-            if (Arrays.stream(patientData).allMatch(s -> s == null || s.isEmpty())) {
-                pazienti.remove(patient_id);
+        else{
+            // Search for a new IP for the actuator
+            actuatorIp = DB.retrieveActuatorIP(retrieveActuatorType(index));
+            if (actuatorIp.isEmpty()) {
+                System.out.println("ERROR: IP NOT FOUND FOR PATIENT " + patient_id);
+                // Check if the patientData array is empty, if so remove the entry from the map
+                if (Arrays.stream(patientData).allMatch(s -> s == null || s.isEmpty())) {
+                    pazienti.remove(patient_id);
+                }
+                return false;  // No IP available
             }
-            return false;  // No IP available
         }
     
         // Try to change actuator status
@@ -129,8 +125,18 @@ public class RemoteControlApplication implements Runnable {
                 // Make the PUT request
                 if (Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive)) {
                     DB.updateActuatorStatus(actuatorIp, patient_id, isActive != 0);
-                    patientData[index] = actuatorIp;  // Save the IP
-                    pazienti.put(patient_id, patientData);
+                    if(isActive != 0){
+                        patientData[index] = actuatorIp;  // Save the IP
+                        pazienti.put(patient_id, patientData);
+                    }
+                    else{
+                        patientData[index] = ""; 
+                        pazienti.put(patient_id, patientData);
+                        // Check if the patientData array is empty, if so remove the entry from the map
+                        if (Arrays.stream(patientData).allMatch(s -> s == null || s.isEmpty())) {
+                            pazienti.remove(patient_id);
+                        }
+                    }
                     return true;  // Success
                 } else {
                     // Error in the PUT request
@@ -139,11 +145,6 @@ public class RemoteControlApplication implements Runnable {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }
-    
-        // Check if the patientData array is empty, if so remove the entry from the map
-        if (Arrays.stream(patientData).allMatch(s -> s == null || s.isEmpty())) {
-            pazienti.remove(patient_id);
         }
     
         System.out.println("Failed to activate actuator for patient " + patient_id);
@@ -183,20 +184,22 @@ public class RemoteControlApplication implements Runnable {
             pazienti = DB.retrieveActiveActuators();
             int i = 1;
             for (;;) {
-                //System.out.println(i);
                 String patientId = String.format("%03d", i);
                 List<Float> sensorValues = DB.retrieveSensorData(patientId);
     
-                if (sensorValues == null) {
+                if (sensorValues == null || sensorValues.size() != 3) {
+                    i = i + 1;
+                    if(i == 4) i = 1;
+                    System.out.println("NO Data for patient " + patientId + "!!!");
                     continue;  // Vai al prossimo paziente se non ci sono dati per questo
                 }
     
-                System.out.println("Data for patient " + patientId + ": " + sensorValues);
+                //System.out.println("Data for patient " + patientId + ": " + sensorValues);
     
                 // Oxygen
                 int value = sensorValues.get(0) <= DNG_OX_TH ? 2 : sensorValues.get(0) <= CTR_OX_TH ? 1 : 0;
                 if (changeActuatorStatus(patientId, 0, value)) {
-                    System.out.println("Oxygen actuator on level " + value);
+                    //System.out.println("Oxygen actuator on level " + value);
                 } else {
                     System.out.println("Call the doctor!!! (oxygen)");
                 }
@@ -206,12 +209,12 @@ public class RemoteControlApplication implements Runnable {
                 float cardioValue = sensorValues.get(2);
                 value = calculateDanger(trpValue, cardioValue);
                 if (changeActuatorStatus(patientId, 1, value) && changeActuatorStatus(patientId, 2, value)) {
-                    System.out.println("Actuators on level " + value);
+                    //System.out.println("Actuators on level " + value);
                 } else {
                     System.out.println("Call the doctor!!! (troponin and cardio)");
                 }
-                i++;
-                if(i == 999) i = 1;
+                i = i + 1;
+                if(i == 4) i = 1;
             }
         } catch (SQLException e) {
             e.printStackTrace();

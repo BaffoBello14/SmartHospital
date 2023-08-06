@@ -105,6 +105,7 @@ int generateRandomOxygen(int input) {
     int output = (rand() % (max_oxygen - min_oxygen + 1)) + min_oxygen;
 
     if(output > 100) output = 100;
+    if(output < 0) output = 0;
     
     return output;
 }

@@ -18,6 +18,7 @@ public class Actuator_Client {
         CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource);
         JSONObject object = new JSONObject();
         object.put("level", isActive);
+        System.out.println(object);
 
         CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
 
@@ -30,8 +31,10 @@ public class Actuator_Client {
         switch (code) {
             case CHANGED:
                 logger.log(Level.INFO, "STATO CAMBIATO CORRETTAMENTE");
+                System.out.println("Attuatore: " + resource + " attivato");
                 return true;
             case BAD_OPTION:
+                System.out.println("Errore attivazione attuatore: " + resource);
                 logger.log(Level.SEVERE, "ERRORE NEL CAMBIO STATO");
                 return false;
             default:
