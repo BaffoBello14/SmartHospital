@@ -91,18 +91,14 @@ public class RemoteControlApplication implements Runnable {
         // Check if the patient exists in the pazienti map
         String[] patientData = pazienti.get(patient_id);
         if (patientData == null) {
-            if (isActive == 0) {
-                return true;  // No actuators to turn off
-            } else {
-                // Add new patient to the map
-                patientData = new String[]{"", "", ""};
-                pazienti.put(patient_id, patientData);
-            }
+            // Add new patient to the map
+            patientData = new String[]{"", "", ""};
+            pazienti.put(patient_id, patientData);
         }
     
         // Check if a valid IP for the actuator already exists
         String actuatorIp = patientData[index];
-        if (actuatorIp != null && !"".equals(actuatorIp)) {
+        if (!"".equals(actuatorIp)) {
             
         }
         else{
@@ -198,21 +194,45 @@ public class RemoteControlApplication implements Runnable {
     
                 // Oxygen
                 int value = sensorValues.get(0) <= DNG_OX_TH ? 2 : sensorValues.get(0) <= CTR_OX_TH ? 1 : 0;
-                if (changeActuatorStatus(patientId, 0, value)) {
-                    //System.out.println("Oxygen actuator on level " + value);
-                } else {
-                    System.out.println("Call the doctor!!! (oxygen)");
+                if(value == 0 && (!pazienti.containsKey(patientId) || "".equals(pazienti.get(patientId)[0]))){
+
+                }
+                else{              
+                    if (changeActuatorStatus(patientId, 0, value)) {
+                        //System.out.println("Oxygen actuator on level " + value);
+                    } else {
+                        System.out.println("Call the doctor!!! (oxygen)");
+                    }
                 }
     
                 // Troponin and Cardio
                 float trpValue = sensorValues.get(1);
                 float cardioValue = sensorValues.get(2);
                 value = calculateDanger(trpValue, cardioValue);
-                if (changeActuatorStatus(patientId, 1, value) && changeActuatorStatus(patientId, 2, value)) {
-                    //System.out.println("Actuators on level " + value);
-                } else {
-                    System.out.println("Call the doctor!!! (troponin and cardio)");
+                if(value == 0 && (!pazienti.containsKey(patientId) || ("".equals(pazienti.get(patientId)[1]) && "".equals(pazienti.get(patientId)[2])))){
+                    // Do nothing
                 }
+                else{
+                    if(value == 0){
+                        if(!"".equals(pazienti.get(patientId)[1])){
+                            changeActuatorStatus(patientId, 1, value);
+                        }
+                        if(!"".equals(pazienti.get(patientId)[2])){
+                            changeActuatorStatus(patientId, 2, value);
+                        }
+                    }
+                    else{
+                        boolean actuator1 = "".equals(pazienti.get(patientId)[1]) || changeActuatorStatus(patientId, 1, value);
+                        boolean actuator2 = "".equals(pazienti.get(patientId)[2]) || changeActuatorStatus(patientId, 2, value);
+                        if (!actuator1 && value < 3) {
+                            System.out.println("Call the doctor!!! (troponin and cardio)");
+                        }
+                        else if (!actuator2 && value < 4) {
+                            changeActuatorStatus(patientId, 2, value + 1);
+                        }
+                    }
+                }
+
                 i = i + 1;
                 if(i == 4) i = 1;
             }
