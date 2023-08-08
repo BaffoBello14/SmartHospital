@@ -9,10 +9,8 @@
 #define LOG_MODULE "res-quantity"
 #define LOG_LEVEL LOG_LEVEL_DBG
 
-extern int medicine_type;
-
-static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
+static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
 RESOURCE(res_quantity,
          "title=\"Medicine's quantity\";rt=\"Control\"",
@@ -21,7 +19,13 @@ RESOURCE(res_quantity,
          res_put_handler,
          NULL);
 
-int medicine_quantity = 0; // 0: off, 1: low, 2: high
+int medicine_quantity = 0;
+static struct ctimer timer;
+static int ignore_zero_time_requests = 0;
+
+static void reset_request_ignore(void *ptr) {
+    ignore_zero_time_requests = 0;
+}
 
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {
     // Convert medicine quantity to a string
@@ -35,33 +39,44 @@ static void res_get_handler(coap_message_t *request, coap_message_t *response, u
 
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {
     size_t len = 0;
-    const char *quantity = NULL;
+    const char *payload = NULL;
 
-    len = coap_get_payload(request, (const uint8_t **)&quantity);
-    if(len <= 0 || len >= 20)
+    len = coap_get_payload(request, (const uint8_t **)&payload);
+    if(len <= 0 || len >= 40)
         goto error;
 
-    char quantity_buffer[21];
-    memcpy(quantity_buffer, quantity, len);
-    quantity_buffer[len] = '\0';
+    char payload_buffer[41];
+    memcpy(payload_buffer, payload, len);
+    payload_buffer[len] = '\0';
 
-    const char *quantity_key = "level:";
-    char *quantity_start = strstr(quantity_buffer, quantity_key);
+    const char *level_key = "level:";
+    const char *time_key = "time:";
+    char *level_start = strstr(payload_buffer, level_key);
+    char *time_start = strstr(payload_buffer, time_key);
 
-    if(quantity_start == NULL) {
-        goto error;
+    if(level_start == NULL || time_start == NULL) {
+        goto error;  // "level:" or "time:" not found in the payload
     } else {
-        quantity_start += strlen(quantity_key);
-        medicine_quantity = atoi(quantity_start);
+        level_start += strlen(level_key);  // Move the pointer to the start of the number
+        time_start += strlen(time_key);  // Move the pointer to the start of the number
+        medicine_quantity = atoi(level_start);
+        int time = atoi(time_start);
+
+        if(time == 0 && ignore_zero_time_requests) {
+            goto error;  // Ignore the request
+        } else if(time > 0) {
+            ctimer_set(&timer, time*CLOCK_SECOND, reset_request_ignore, NULL);
+            ignore_zero_time_requests = 1;
+        }
     }
 
     if(medicine_quantity == 0) {
         leds_set(LEDS_OFF);
         LOG_INFO("MEDICINE OFF\n");
-    } else if(medicine_quantity == 1 && medicine_type != 0) {
+    } else if(medicine_quantity == 1 || medicine_quantity == 3) {
         leds_set(LEDS_BLUE);
         LOG_INFO("MEDICINE QUANTITY LOW\n");
-    } else if(medicine_quantity == 2 && medicine_type != 0) {
+    } else if(medicine_quantity == 2 || medicine_quantity == 4) {
         leds_set(LEDS_RED);
         LOG_INFO("MEDICINE QUANTITY HIGH\n");
     } else {

@@ -166,4 +166,32 @@ public class DB {
 
         return activeActuators;
     }
+
+    public static List<String> queryActuatorsWithStatus(int status) throws SQLException {
+        List<String> actuatorIps = new ArrayList<>();
+    
+        // Query to get all actuators with the given status
+        String query = "SELECT ip FROM actuator WHERE status = ?";
+    
+        try (Connection connection = createDbConnection();
+             PreparedStatement ps = connection.prepareStatement(query)) {
+    
+            // Set the status parameter in the query
+            ps.setInt(1, status);
+    
+            try (ResultSet rs = ps.executeQuery()) {
+                // Loop through the result set and add each IP to the list
+                while (rs.next()) {
+                    String ip = rs.getString("ip");
+                    actuatorIps.add(ip);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error while querying actuators with status " + status + ": " + e.getMessage());
+            throw e;  // Re-throw the exception to be handled by the caller
+        }
+    
+        return actuatorIps;
+    }
+    
 }

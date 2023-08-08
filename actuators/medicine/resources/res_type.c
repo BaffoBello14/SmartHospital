@@ -9,8 +9,8 @@
 #define LOG_MODULE "res-type"
 #define LOG_LEVEL LOG_LEVEL_DBG
 
-static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
+static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
 RESOURCE(res_type,
          "title=\"Medicine's type\";rt=\"Control\"",
@@ -19,7 +19,13 @@ RESOURCE(res_type,
          res_put_handler,
          NULL);
 
-int medicine_type = 0; // 0: off, 1: type 1, 2: type 2
+int medicine_type = 0;
+static struct ctimer timer;
+static int ignore_zero_time_requests = 0;
+
+static void reset_request_ignore(void *ptr) {
+    ignore_zero_time_requests = 0;
+}
 
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {
     // Convert medicine type to a string
@@ -33,33 +39,44 @@ static void res_get_handler(coap_message_t *request, coap_message_t *response, u
 
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {
     size_t len = 0;
-    const char *type = NULL;
+    const char *payload = NULL;
 
-    len = coap_get_payload(request, (const uint8_t **)&type);
-    if(len <= 0 || len >= 20)
+    len = coap_get_payload(request, (const uint8_t **)&payload);
+    if(len <= 0 || len >= 40)
         goto error;
 
-    char type_buffer[21];
-    memcpy(type_buffer, type, len);
-    type_buffer[len] = '\0';
+    char payload_buffer[41];
+    memcpy(payload_buffer, payload, len);
+    payload_buffer[len] = '\0';
 
-    const char *type_key = "level:";
-    char *type_start = strstr(type_buffer, type_key);
+    const char *level_key = "level:";
+    const char *time_key = "time:";
+    char *level_start = strstr(payload_buffer, level_key);
+    char *time_start = strstr(payload_buffer, time_key);
 
-    if(type_start == NULL) {
-        goto error;
+    if(level_start == NULL || time_start == NULL) {
+        goto error;  // "level:" or "time:" not found in the payload
     } else {
-        type_start += strlen(type_key);
-        medicine_type = atoi(type_start);
+        level_start += strlen(level_key);  // Move the pointer to the start of the number
+        time_start += strlen(time_key);  // Move the pointer to the start of the number
+        medicine_type = atoi(level_start);
+        int time = atoi(time_start);
+
+        if(time == 0 && ignore_zero_time_requests) {
+            goto error;  // Ignore the request
+        } else if(time > 0) {
+            ctimer_set(&timer, time*CLOCK_SECOND, reset_request_ignore, NULL);
+            ignore_zero_time_requests = 1;
+        }
     }
 
     if(medicine_type == 0) {
         leds_set(LEDS_OFF);
         LOG_INFO("MEDICINE OFF\n");
-    } else if(medicine_type == 1) {
+    } else if(medicine_type == 1 || medicine_type == 3) {
         leds_set(LEDS_BLUE);
         LOG_INFO("MEDICINE TYPE 1\n");
-    } else if(medicine_type == 2) {
+    } else if(medicine_type == 2 || medicine_type == 4) {
         leds_set(LEDS_RED);
         LOG_INFO("MEDICINE TYPE 2\n");
     } else {

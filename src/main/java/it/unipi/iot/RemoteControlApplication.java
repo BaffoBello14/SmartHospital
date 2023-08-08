@@ -12,16 +12,16 @@ public class RemoteControlApplication implements Runnable {
     // S2,S3 -> A3
 
     // tropomina = 0.1 g/ml if val > 1 allora pericolo
-    private static final float DNG_TRP_TH = 0.1f;
-    private static final float CTR_TRP_TH = 0.07f;
+    private static float DNG_TRP_TH = 0.1f;
+    private static float CTR_TRP_TH = 0.07f;
 
-    private static final float DNG_OX_TH = 49.9f;
-    private static final float CTR_OX_TH = 59.9f;
+    private static float DNG_OX_TH = 49.9f;
+    private static float CTR_OX_TH = 59.9f;
 
-    private static final int U_DNG_HB_TH = 250;
-    private static final int U_CTR_HB_TH = 220;
-    private static final int L_DNG_HB_TH = 20;
-    private static final int L_CTR_HB_TH = 30;
+    private static int U_DNG_HB_TH = 250;
+    private static int U_CTR_HB_TH = 220;
+    private static int L_DNG_HB_TH = 20;
+    private static int L_CTR_HB_TH = 30;
 
     private static final RemoteControlApplication instance = new RemoteControlApplication();
 
@@ -31,6 +31,98 @@ public class RemoteControlApplication implements Runnable {
     public static RemoteControlApplication getInstance() {
         return instance;
     }
+
+    public void setOxygenThresholds(float control, float danger) {
+        CTR_OX_TH = control;
+        DNG_OX_TH = danger;
+    }
+    
+    public void setCardioThresholds(int upperControl, int lowerControl, int upperDanger, int lowerDanger) {
+        U_CTR_HB_TH = upperControl;
+        L_CTR_HB_TH = lowerControl;
+        U_DNG_HB_TH = upperDanger;
+        L_DNG_HB_TH = lowerDanger;
+    }
+    
+    public void setTroponinThresholds(float control, float danger) {
+        CTR_TRP_TH = control;
+        DNG_TRP_TH = danger;
+    }
+
+    public String getAvailableActuators() {
+        try {
+            // Replace this with your actual DB query code
+            List<String> availableActuators = DB.queryActuatorsWithStatus(0);
+            return String.join(", ", availableActuators);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return "Error querying the database.";
+        }
+    }
+
+    public String getActuatorStatuses(String patientId) {
+        StringBuilder sb = new StringBuilder();
+    
+        String[] actuatorIps = pazienti.get(patientId);
+        if (actuatorIps == null) {
+            sb.append("No active actuators for patient " + patientId);
+        } else {
+            for (int i = 0; i < actuatorIps.length; i++) {
+                String actuatorIp = actuatorIps[i];
+                if (actuatorIp != null && !actuatorIp.isEmpty()) {
+                    String actuatorType = retrieveActuatorType(i);
+                    String status = Actuator_Client.getActuatorStatus(actuatorIp, actuatorType);
+                    sb.append("Actuator: " + actuatorType + ", Status: " + status + "\n");
+                }
+            }
+        }
+    
+        return sb.toString();
+    }
+    
+    public String getActuatorStatuses() {
+        StringBuilder sb = new StringBuilder();
+    
+        if (pazienti.isEmpty()) {
+            sb.append("No active actuators.");
+        } else {
+            for (String patientId : pazienti.keySet()) {
+                sb.append("Patient ID: " + patientId + "\n");
+                sb.append(getActuatorStatuses(patientId));
+                sb.append("\n");
+            }
+        }
+    
+        return sb.toString();
+    }
+    
+    public boolean activateActuator(String patientId, String actuatorType, int level, int time) {
+        String[] actuatorIps = pazienti.get(patientId);
+        if (actuatorIps == null) {
+            System.err.println("No actuators found for patient " + patientId);
+            return false;
+        }
+    
+        for (int i = 0; i < actuatorIps.length; i++) {
+            String actuatorIp = actuatorIps[i];
+            if (actuatorIp != null && !actuatorIp.isEmpty()) {
+                String actuatorTypeTemp = retrieveActuatorType(i);
+                if(actuatorTypeTemp.equals(actuatorType)){
+                    try {
+                        return Actuator_Client.putClientRequest(actuatorIp, actuatorType, level, time);
+                    } catch (SQLException e) {
+                        System.err.println("Failed to activate actuator due to database error: " + e.getMessage());
+                        return false;
+                    } catch (IllegalStateException e) {
+                        System.err.println("Failed to activate actuator due to network error: " + e.getMessage());
+                        return false;
+                    }
+                }
+            }
+        }
+    
+        return false;
+    }    
 
     public int retrieveSensorType(String id)
     {
@@ -119,7 +211,7 @@ public class RemoteControlApplication implements Runnable {
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             try {
                 // Make the PUT request
-                if (Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive)) {
+                if (Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive, 0)) {
                     DB.updateActuatorStatus(actuatorIp, patient_id, isActive != 0);
                     if(isActive != 0){
                         patientData[index] = actuatorIp;  // Save the IP
@@ -225,7 +317,7 @@ public class RemoteControlApplication implements Runnable {
                         boolean actuator1 = "".equals(pazienti.get(patientId)[1]) || changeActuatorStatus(patientId, 1, value);
                         boolean actuator2 = "".equals(pazienti.get(patientId)[2]) || changeActuatorStatus(patientId, 2, value);
                         if (!actuator1 && value < 3) {
-                            System.out.println("Call the doctor!!! heart desease");
+                            System.out.println("Call the doctor!!! (heart desease)");
                         }
                         else if (!actuator2 && value < 4) {
                             changeActuatorStatus(patientId, 2, value + 1);

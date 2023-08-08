@@ -19,7 +19,13 @@ RESOURCE(res_shock,
          res_put_handler,
          NULL);
 
-static int shock_level = 0;  // 0: off, 3: low, 4: high
+static int shock_level = 0;
+static struct ctimer timer;
+static int ignore_zero_time_requests = 0;
+
+static void reset_request_ignore(void *ptr) {
+    ignore_zero_time_requests = 0;
+}
 
 static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {
     // Convert shock level to a string
@@ -33,27 +39,38 @@ static void res_get_handler(coap_message_t *request, coap_message_t *response, u
 
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {
     size_t len = 0;
-    const char *level = NULL;
+    const char *payload = NULL;
 
-    len = coap_get_payload(request, (const uint8_t **)&level);
-    if(len <= 0 || len >= 20)
+    len = coap_get_payload(request, (const uint8_t **)&payload);
+    if(len <= 0 || len >= 40)
         goto error;
 
-    char level_buffer[21];
-    memcpy(level_buffer, level, len);
-    level_buffer[len] = '\0';
+    char payload_buffer[41];
+    memcpy(payload_buffer, payload, len);
+    payload_buffer[len] = '\0';
 
     const char *level_key = "level:";
-    char *level_start = strstr(level_buffer, level_key);
+    const char *time_key = "time:";
+    char *level_start = strstr(payload_buffer, level_key);
+    char *time_start = strstr(payload_buffer, time_key);
 
-    if(level_start == NULL) {
-        goto error;  // "level:" not found in the payload
+    if(level_start == NULL || time_start == NULL) {
+        goto error;  // "level:" or "time:" not found in the payload
     } else {
         level_start += strlen(level_key);  // Move the pointer to the start of the number
+        time_start += strlen(time_key);  // Move the pointer to the start of the number
         shock_level = atoi(level_start);
+        int time = atoi(time_start);
+
+        if(time == 0 && ignore_zero_time_requests) {
+            goto error;  // Ignore the request
+        } else if(time > 0) {
+            ctimer_set(&timer, time*CLOCK_SECOND, reset_request_ignore, NULL);
+            ignore_zero_time_requests = 1;
+        }
     }
 
-    if(shock_level == 0) {
+    if(shock_level == 0 || shock_level == 1 || shock_level == 2) {
         leds_set(LEDS_COLOUR_NONE);
         LOG_INFO("DEFIBRILLATOR OFF\n");
     } else if(shock_level == 3) {

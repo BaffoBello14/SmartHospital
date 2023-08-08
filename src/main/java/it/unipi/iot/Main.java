@@ -6,10 +6,16 @@ public class Main {
         Coordinator coordinator = new Coordinator();
         Thread coordinatorThread = new Thread(coordinator);
 
-        
-        Thread remoteControlApplicationThread = new Thread(new RemoteControlApplication());
+        // Create RemoteControlApplication and start its thread
+        RemoteControlApplication remoteControlApplication = new RemoteControlApplication();
+        Thread remoteControlApplicationThread = new Thread(remoteControlApplication);
+
+        // Create ConsoleInterface with remoteControlApplication as dependency and start its thread
+        ConsoleInterface consoleInterface = new ConsoleInterface(remoteControlApplication);
+        Thread consoleInterfaceThread = new Thread(consoleInterface);
 
         coordinatorThread.start();
         remoteControlApplicationThread.start();
+        consoleInterfaceThread.start(); // Start the ConsoleInterface thread
     }
 }

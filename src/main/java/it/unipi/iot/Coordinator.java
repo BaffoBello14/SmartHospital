@@ -116,7 +116,7 @@ public class Coordinator implements MqttCallback, Runnable {
     }
 
     public void messageArrived(String topic, MqttMessage message) throws Exception {
-        System.out.println("MESSAGE ARRIVED - Topic: " + topic + ", Payload: " + message);
+        //System.out.println("MESSAGE ARRIVED - Topic: " + topic + ", Payload: " + message);
 
         if (topic.equals(OXYGEN_TOPIC) || topic.equals(CARDIO_TOPIC) || topic.equals(TROPONIN_TOPIC)) {
             String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
