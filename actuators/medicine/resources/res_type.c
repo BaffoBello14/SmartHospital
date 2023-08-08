@@ -71,7 +71,7 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
     }
 
     if(medicine_type == 0) {
-        leds_set(LEDS_OFF);
+        leds_set(LEDS_COLOUR_NONE);
         LOG_INFO("MEDICINE OFF\n");
     } else if(medicine_type == 1 || medicine_type == 3) {
         leds_set(LEDS_BLUE);
