@@ -88,7 +88,7 @@ public class Coordinator implements MqttCallback, Runnable {
             MqttClient mqttClient = new MqttClient(MQTT_BROKER, clientId);
             mqttClient.setCallback(this);
             mqttClient.connect();
-            System.out.println("connessione ok\n");
+            // System.out.println("connessione ok\n");
             return mqttClient;
         } catch (MqttException e) {
             e.printStackTrace();
@@ -123,6 +123,10 @@ public class Coordinator implements MqttCallback, Runnable {
             JsonObject jsonPayload = JsonParser.parseString(payload).getAsJsonObject();
             String sensorId = jsonPayload.get("id").getAsString();
             float value = jsonPayload.get("value").getAsFloat();
+            if(sensorId.startsWith("t"))
+            {
+                value = value / 100;
+            }
 
             String tableName = "";
             switch (topic) {

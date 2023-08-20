@@ -95,11 +95,11 @@ static char new_id[6] = "o001";
 
 int generateRandomOxygen(int input) {
     // Define the range
-    int range = 5;
+    // int range = 5;
     
     // Calculate the minimum and maximum oxygen level values
-    int min_oxygen = input - range;
-    int max_oxygen = input + range;
+    int min_oxygen = input - 10;
+    int max_oxygen = input + 1;
     
     // Generate a random oxygen level within the range
     int output = (rand() % (max_oxygen - min_oxygen + 1)) + min_oxygen;
@@ -228,7 +228,7 @@ PROCESS_THREAD(oxygen_process, ev, data)
         oxygen = generateRandomOxygen(oxygen);
 
         sprintf(app_buffer, "{\"id\": \"%s\", \"value\": %d}", new_id, oxygen);
-        printf("Hello, here are the info: %s", app_buffer);
+        printf("Hello, here are the info: %s \n", app_buffer);
 
         mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer, strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
       } else if (state == STATE_DISCONNECTED){

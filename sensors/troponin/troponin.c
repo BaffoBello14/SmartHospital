@@ -87,20 +87,24 @@ static struct mqtt_connection conn;
 /*---------------------------------------------------------------------------*/
 PROCESS(troponin_process, "Troponin process");
 
-static double troponin = 0.1;  // Initial troponin value
+// static double troponin = 0.1;  // Initial troponin value
+static int troponin = 10;
 
 static char new_id[6] = "t001";
 
-double generateRandomTroponin(double input) {
+double generateRandomTroponin(int input) {
     // Define the range
-    double range = 0.5;
     
-    // Calculate the minimum and maximum troponin values
-    double min_troponin = input - range;
-    double max_troponin = input + range;
+    int range = 1;
     
-    // Generate a random troponin level within the range
-    double output = ((double)rand() / (double)RAND_MAX) * (max_troponin - min_troponin) + min_troponin;
+    // Calculate the minimum and maximum heart rate values
+    int min_cardio = input - range;
+    int max_cardio = input + 4;
+    
+    // Generate a random heart rate within the range
+    int output = (rand() % (max_cardio - min_cardio + 1)) + min_cardio;
+
+    if(output < 0) output = 0;
 
     return output;
 }
@@ -139,6 +143,9 @@ static void mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data
   }
   case MQTT_EVENT_PUBACK: {
     printf("Publishing complete.\n");
+    break;
+  }
+  case 4: {
     break;
   }
   default:
@@ -216,12 +223,15 @@ PROCESS_THREAD(troponin_process, ev, data)
 
       if(state == STATE_SUBSCRIBED){
         // Publish something
-        sprintf(pub_topic, "%s", "troponin");
+        // sprintf(pub_topic, "%s", "troponin");
+        sprintf(pub_topic, "troponin");
 
         troponin = generateRandomTroponin(troponin);
 
-        sprintf(app_buffer, "{\"id\": \"%s\", \"value\": %.2lf}", new_id, troponin);
-        printf("Publishing: %s", app_buffer);
+        // sprintf(app_buffer, "{\"id\": \"%s\", \"value\": %.2lf}", new_id, troponin);
+        sprintf(app_buffer, "{\"id\": \"%s\", \"value\": %d}", new_id, troponin);
+        
+        printf("Publishing: %s \n", app_buffer);
 
         mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer, strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
       } else if (state == STATE_DISCONNECTED){

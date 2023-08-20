@@ -15,6 +15,21 @@ public class Actuator_Client {
     private static final Logger logger = Logger.getLogger(Actuator_Client.class.getName());
 
     public static boolean putClientRequest(String ip, String resource, int isActive, int time) throws SQLException, IllegalStateException {
+        if("medicine".equals(resource))
+        {
+            CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource + "/type");
+            JSONObject object = new JSONObject();
+            object.put("level", isActive);
+            object.put("time", time);
+            System.out.println(object);
+            CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
+            if (response == null) {
+                logger.log(Level.SEVERE, "An error occurred while contacting the actuator");
+                throw new IllegalStateException("An error occurred while contacting the actuator");
+            }
+            resource = "medicine/quantity";
+        }
+        
         CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource);
         JSONObject object = new JSONObject();
         object.put("level", isActive);

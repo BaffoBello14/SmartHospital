@@ -63,6 +63,8 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
         int time = atoi(time_start);
 
         if(time == 0 && ignore_zero_time_requests) {
+            // Time==0 -> dalla retrieve scopre di dover cambiar stato
+            // time!=0 -> puo arrivare solo da linea di comando
             goto error;  // Ignore the request
         } else if(time > 0) {
             ctimer_set(&timer, time*CLOCK_SECOND, reset_request_ignore, NULL);

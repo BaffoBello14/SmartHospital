@@ -93,11 +93,14 @@ static char new_id[6] = "c001";
 
 int generateRandomCardio(int input) {
     // Define the range
-    int range = 10;
+    // int range = 10;
     
+    int rangeUp = 5;
+    int rangeDown = 20;
+
     // Calculate the minimum and maximum heart rate values
-    int min_cardio = input - range;
-    int max_cardio = input + range;
+    int min_cardio = input - rangeDown;
+    int max_cardio = input + rangeUp;
     
     // Generate a random heart rate within the range
     int output = (rand() % (max_cardio - min_cardio + 1)) + min_cardio;
@@ -141,6 +144,9 @@ static void mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data
   }
   case MQTT_EVENT_PUBACK: {
     printf("Publishing complete.\n");
+    break;
+  }
+  case 4: {
     break;
   }
   default:
@@ -223,7 +229,7 @@ PROCESS_THREAD(cardio_process, ev, data)
         cardio = generateRandomCardio(cardio);
 
         sprintf(app_buffer, "{\"id\": \"%s\", \"value\": %d}", new_id, cardio);
-        printf("Hello, here are the info: %s", app_buffer);
+        printf("Hello, here are the info: %s \n", app_buffer);
 
         mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer, strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
       } else if (state == STATE_DISCONNECTED){

@@ -70,6 +70,8 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
         }
     }
 
+    printf("SHOCK LEVEL: %d", shock_level);
+
     if(shock_level == 0 || shock_level == 1 || shock_level == 2) {
         leds_set(LEDS_COLOUR_NONE);
         LOG_INFO("DEFIBRILLATOR OFF\n");

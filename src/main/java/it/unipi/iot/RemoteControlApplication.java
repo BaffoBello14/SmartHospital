@@ -26,7 +26,8 @@ public class RemoteControlApplication implements Runnable {
     private static final RemoteControlApplication instance = new RemoteControlApplication();
 
     String[] attuatori = new String[3];
-    static HashMap<String, String[]> pazienti = new HashMap<>();
+    // static HashMap<String, String[]> pazienti = new HashMap<>();
+    private static HashMap<String, String[]> pazienti = new HashMap<>();
 
     public static RemoteControlApplication getInstance() {
         return instance;
@@ -314,6 +315,52 @@ public class RemoteControlApplication implements Runnable {
                         }
                     }
                     else{
+                        if(!changeActuatorStatus(patientId, 1, value))
+                        {
+                            System.out.println("MEDICINA NON ATTIVATA\n");
+                        }
+                        if(!changeActuatorStatus(patientId, 2, value))
+                        {
+                            System.out.println("DEFIBRILLO NON ATTIVATO\n");
+                        }
+                        /*
+                        String[] patientData = pazienti.get(patientId);
+                        if (patientData == null) {
+                            // Add new patient to the map
+                            System.out.println("PATIENT DATA VUOTI");
+                            boolean actuator1 = changeActuatorStatus(patientId, 1, value);
+                            boolean actuator2 = changeActuatorStatus(patientId, 2, value);
+                            if (!actuator1 && value < 3) {
+                                System.out.println("Call the doctor!!! (heart desease)");
+                            }
+                            else if (!actuator2 && value < 4) {
+                                changeActuatorStatus(patientId, 2, value + 1);
+                            }
+                        }
+                        else
+                        {
+                            boolean actuator1 = "".equals(pazienti.get(patientId)[1]) || changeActuatorStatus(patientId, 1, value);
+                            boolean actuator2 = "".equals(pazienti.get(patientId)[2]) || changeActuatorStatus(patientId, 2, value);
+                            if (!actuator1 && value < 3) {
+                                System.out.println("Call the doctor!!! (heart desease)");
+                            }
+                            else if (!actuator2 && value < 4) {
+                                changeActuatorStatus(patientId, 2, value + 1);
+                            }
+                        }
+                        System.out.println("VALUE= "+value);
+                        String patientAc1 = pazienti.get(patientId)[1];
+                        String patientAc2 = pazienti.get(patientId)[2];
+                        if(patientAc1.isEmpty())
+                        {
+                            System.out.println("ACTUATOR 1 VUOTO");
+                        }
+                        if(patientAc2.isEmpty())
+                        {
+                            System.out.println("ACTUATOR 2 VUOTO");
+                        }
+                        System.out.println("ACTUATOR 1: "+patientAc1);
+                        System.out.println("ACTUATOR 2: "+patientAc2);
                         boolean actuator1 = "".equals(pazienti.get(patientId)[1]) || changeActuatorStatus(patientId, 1, value);
                         boolean actuator2 = "".equals(pazienti.get(patientId)[2]) || changeActuatorStatus(patientId, 2, value);
                         if (!actuator1 && value < 3) {
@@ -322,6 +369,7 @@ public class RemoteControlApplication implements Runnable {
                         else if (!actuator2 && value < 4) {
                             changeActuatorStatus(patientId, 2, value + 1);
                         }
+                        */
                     }
                 }
 
