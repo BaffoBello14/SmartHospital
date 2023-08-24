@@ -11,15 +11,15 @@ public class ConsoleInterface implements Runnable {
     }
 
     private void printCommands() {
-        System.out.println("Commands:");
-        System.out.println("getActuatorStatuses [patientId] - Get the status of actuators for a specific patient or all patients if no ID provided");
-        System.out.println("getAvailableActuators - Get the list of available actuators");
-        System.out.println("setOxygenThresholds <low> <high> - Set the thresholds for oxygen levels");
-        System.out.println("setCardioThresholds <lowPulse> <highPulse> <lowPressure> <highPressure> - Set the thresholds for heart rate and blood pressure");
-        System.out.println("setTroponinThresholds <low> <high> - Set the thresholds for troponin levels");
-        System.out.println("activateActuator <patientId> <actuatorType> <level> <duration> - Activate a specific actuator for a specific patient for a given duration");
-        System.out.println("quit - Exit the program");
-        System.out.println("help - Show the list of commands");
+        System.out.println("Commands: \n");
+        System.out.println("getActuatorStatuses [patientId] - Get the status of actuators for a specific patient or all patients if no ID provided\n");
+        System.out.println("getAvailableActuators - Get the list of available actuators\n");
+        System.out.println("setOxygenThresholds <low> <high> - Set the thresholds for oxygen levels\n");
+        System.out.println("setCardioThresholds <lowPulse> <highPulse> <lowPressure> <highPressure> - Set the thresholds for heart rate and blood pressure \n");
+        System.out.println("setTroponinThresholds <low> <high> - Set the thresholds for troponin levels \n");
+        System.out.println("activateActuator <patientId> <actuatorType> <level> <duration> - Activate a specific actuator for a specific patient for a given duration\n");
+        System.out.println("quit - Exit the program\n");
+        System.out.println("help - Show the list of commands\n");
     }
 
     @Override

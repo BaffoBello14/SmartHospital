@@ -7,6 +7,8 @@ import org.eclipse.californium.core.coap.MediaTypeRegistry;
 import org.json.simple.JSONObject;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -14,27 +16,40 @@ public class Actuator_Client {
 
     private static final Logger logger = Logger.getLogger(Actuator_Client.class.getName());
 
-    public static boolean putClientRequest(String ip, String resource, int isActive, int time) throws SQLException, IllegalStateException {
+    private static HashMap<String, Integer> status = new HashMap<>();
+
+    public static String putMedicine(String ip, int isActive, int time)
+    {
+        CoapClient client = new CoapClient("coap://[" + ip + "]/" +  "medicine/type");
+        JSONObject object = new JSONObject();
+        object.put("level", isActive);
+        object.put("time", time);
+        // System.out.println(object);
+        CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
+        if (response == null) {
+            logger.log(Level.SEVERE, "An error occurred while contacting the actuator");
+            throw new IllegalStateException("An error occurred while contacting the actuator");
+        }
+        return "medicine/quantity";
+    }
+
+    public static boolean putClientRequest(String ip, String resource, int isActive, int time) throws SQLException, IllegalStateException 
+    {
+        int stato = localCheck(ip);
+        if(stato==isActive)
+        {
+            return true;
+        }
         if("medicine".equals(resource))
         {
-            CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource + "/type");
-            JSONObject object = new JSONObject();
-            object.put("level", isActive);
-            object.put("time", time);
-            System.out.println(object);
-            CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
-            if (response == null) {
-                logger.log(Level.SEVERE, "An error occurred while contacting the actuator");
-                throw new IllegalStateException("An error occurred while contacting the actuator");
-            }
-            resource = "medicine/quantity";
+            resource = putMedicine(ip, isActive, time);
         }
         
         CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource);
         JSONObject object = new JSONObject();
         object.put("level", isActive);
         object.put("time", time);
-        System.out.println(object);
+        // System.out.println(object);
     
         CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
     
@@ -48,6 +63,7 @@ public class Actuator_Client {
             case CHANGED:
                 logger.log(Level.INFO, "STATO CAMBIATO CORRETTAMENTE");
                 System.out.println("Attuatore: " + resource + " attivato");
+                status.put(ip, isActive);
                 return true;
             case BAD_OPTION:
                 System.out.println("Errore attivazione attuatore: " + resource);
@@ -59,24 +75,56 @@ public class Actuator_Client {
         }
     }
     
+    public static int localCheck(String ip)
+    {
+        int res = -1;
+        if(status.keySet().isEmpty())
+        {
+            return res;
+        }
+        for(String keyIp : status.keySet())
+        {
+            if(keyIp.equals(ip))
+                res = status.get(keyIp);
+        }
+        return res;
+    }
 
-    public static boolean checkActuatorStatus(String ip, String resource) {
+    public static boolean checkActuatorStatus(String ip, String resource) 
+    {
         CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource);
         CoapResponse response = client.get();
     
         return response != null && response.getCode() == CoAP.ResponseCode.CONTENT;
     }
 
-    public static String getActuatorStatus(String ip, String resource) {
-        CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource);
-        CoapResponse response = client.get();
-    
-        if (response != null && response.getCode() == CoAP.ResponseCode.CONTENT) {
-            return response.getResponseText();
-        } else {
-            System.err.println("Failed to get status of actuator at IP " + ip);
-            return null;
+    public static String getActuatorStatus(String ip, String resource) 
+    {
+        int check = localCheck(ip);
+        String stato = " ";
+        switch(check)
+        {
+            case 1:
+            if(resource.equals("medicine"))
+                stato = "TYPE 1 ";
+            stato = stato + "ON LOW";
+            break;
+            case 2:
+            if(resource.equals("medicine"))
+                stato = "TYPE 1 ";
+            stato = stato + "ON HIGH";
+            break;
+            case 3:
+            stato = "TYPE 2 ON LOW";
+            break;
+            case 4:
+            stato = "TYPE 2 ON HIGH";
+            break;
+            default:
+            stato = "ERROR";
+            break;
         }
+        return stato;
     }
     
 }

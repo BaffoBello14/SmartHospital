@@ -70,14 +70,32 @@ public class RemoteControlApplication implements Runnable {
         } else {
             for (int i = 0; i < actuatorIps.length; i++) {
                 String actuatorIp = actuatorIps[i];
+                String actuatorType = retrieveActuatorType(i);
+                String status = "SPENTO";
                 if (actuatorIp != null && !actuatorIp.isEmpty()) {
-                    String actuatorType = retrieveActuatorType(i);
-                    String status = Actuator_Client.getActuatorStatus(actuatorIp, actuatorType);
-                    sb.append("Actuator: " + actuatorType + ", Status: " + status + "\n");
+                    status = Actuator_Client.getActuatorStatus(actuatorIp, actuatorType);
                 }
+                sb.append("Actuator: " + actuatorType + ", Status: " + status + "\n");
             }
         }
     
+        return sb.toString();
+    }
+
+    public String printPazienti()
+    {
+        StringBuilder sb = new StringBuilder("");
+        for(String idPaziente : pazienti.keySet())
+        {
+            int index = 0;
+            for(String attuatore : pazienti.get(idPaziente))
+            {
+                String status = "INATTIVO";
+                if(!attuatore.isEmpty())
+                    status = "ON";
+                sb.append(" ATTUATORE: "+ retrieveActuatorType(index)+" STATO: ");
+            }
+        }
         return sb.toString();
     }
     
