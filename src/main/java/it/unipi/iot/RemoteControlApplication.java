@@ -118,23 +118,47 @@ public class RemoteControlApplication implements Runnable {
     public boolean activateActuator(String patientId, String actuatorType, int level, int time) {
         String[] actuatorIps = pazienti.get(patientId);
         if (actuatorIps == null) {
-            System.err.println("No actuators found for patient " + patientId);
-            return false;
+            actuatorIps = new String[]{"", "", ""};
+            String ip = DB.retrieveActuatorIP(actuatorType);
+            if(!ip.equals("")){
+                try {
+                    if(Actuator_Client.putClientRequest(ip, actuatorType, level, time)){
+                        if(actuatorType.equals("mask")){
+                            actuatorIps[0] = ip;
+                        }
+                        if(actuatorType.equals("medicine")){
+                            actuatorIps[1] = ip;
+                        }
+                        if(actuatorType.equals("defibrillator")){
+                            actuatorIps[2] = ip;
+                        }
+                        pazienti.put(patientId, actuatorIps);
+                        return true;
+                    }
+                } catch (SQLException e) {
+                    System.err.println("Failed to activate actuator due to database error: " + e.getMessage());
+                    return false;
+                } catch (IllegalStateException e) {
+                    System.err.println("Failed to activate actuator due to network error: " + e.getMessage());
+                    return false;
+                }
+            }
         }
-    
-        for (int i = 0; i < actuatorIps.length; i++) {
-            String actuatorIp = actuatorIps[i];
-            if (actuatorIp != null && !actuatorIp.isEmpty()) {
-                String actuatorTypeTemp = retrieveActuatorType(i);
-                if(actuatorTypeTemp.equals(actuatorType)){
-                    try {
-                        return Actuator_Client.putClientRequest(actuatorIp, actuatorType, level, time);
-                    } catch (SQLException e) {
-                        System.err.println("Failed to activate actuator due to database error: " + e.getMessage());
-                        return false;
-                    } catch (IllegalStateException e) {
-                        System.err.println("Failed to activate actuator due to network error: " + e.getMessage());
-                        return false;
+        else{   
+            for (int i = 0; i < actuatorIps.length; i++) {
+                String actuatorIp = actuatorIps[i];
+                if (actuatorIp != null && !actuatorIp.isEmpty()) {
+                    String actuatorTypeTemp = retrieveActuatorType(i);
+                    if(actuatorTypeTemp.equals(actuatorType)){
+                        try {
+                            return Actuator_Client.putClientRequest(actuatorIp, actuatorType, level, time);
+                        } catch (SQLException e) {
+                            System.err.println("Failed to activate actuator due to database error: " + e.getMessage());
+                            return false;
+                        } catch (IllegalStateException e) {
+                            System.err.println("Failed to activate actuator due to network error: " + e.getMessage());
+                            return false;
+                        }
                     }
                 }
             }
@@ -225,33 +249,29 @@ public class RemoteControlApplication implements Runnable {
             }
         }
     
-        // Try to change actuator status
-        final int MAX_ATTEMPTS = 3;
-        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-            try {
-                // Make the PUT request
-                if (Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive, 0)) {
-                    DB.updateActuatorStatus(actuatorIp, patient_id, isActive != 0);
-                    if(isActive != 0){
-                        patientData[index] = actuatorIp;  // Save the IP
-                        pazienti.put(patient_id, patientData);
-                    }
-                    else{
-                        patientData[index] = ""; 
-                        pazienti.put(patient_id, patientData);
-                        // Check if the patientData array is empty, if so remove the entry from the map
-                        if (Arrays.stream(patientData).allMatch(s -> s == null || s.isEmpty())) {
-                            pazienti.remove(patient_id);
-                        }
-                    }
-                    return true;  // Success
-                } else {
-                    // Error in the PUT request
-                    System.out.println("ERROR IN PUT REQUEST, ATTEMPT " + (attempt + 1));
+        try {
+            // Make the PUT request
+            if (Actuator_Client.putClientRequest(actuatorIp, retrieveActuatorType(index), isActive, 0)) {
+                DB.updateActuatorStatus(actuatorIp, patient_id, isActive != 0);
+                if(isActive != 0){
+                    patientData[index] = actuatorIp;  // Save the IP
+                    pazienti.put(patient_id, patientData);
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
+                else{
+                    patientData[index] = ""; 
+                    pazienti.put(patient_id, patientData);
+                    // Check if the patientData array is empty, if so remove the entry from the map
+                    if (Arrays.stream(patientData).allMatch(s -> s == null || s.isEmpty())) {
+                        pazienti.remove(patient_id);
+                    }
+                }
+                return true;  // Success
+            } else {
+                // Error in the PUT request
+                System.out.println("ERROR IN PUT REQUEST");
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     
         System.out.println("Failed to activate actuator for patient " + patient_id);

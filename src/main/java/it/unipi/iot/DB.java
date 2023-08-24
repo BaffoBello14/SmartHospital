@@ -151,13 +151,9 @@ public class DB {
                 String type = rs.getString("type");
                 String patientId = String.valueOf(rs.getInt("status"));
 
-                if (Actuator_Client.checkActuatorStatus(ip, type)) {
-                    String[] actuatorIps = activeActuators.getOrDefault(patientId, new String[3]);
-                    actuatorIps[type.equals("mask") ? 0 : type.equals("medicine") ? 1 : 2] = ip;
-                    activeActuators.put(patientId, actuatorIps);
-                } else {
-                    deleteActuator(ip);
-                }
+                String[] actuatorIps = activeActuators.getOrDefault(patientId, new String[3]);
+                actuatorIps[type.equals("mask") ? 0 : type.equals("medicine") ? 1 : 2] = ip;
+                activeActuators.put(patientId, actuatorIps);
             }
         } catch (SQLException e) {
             System.err.println("Error while retrieving active actuators: " + e.getMessage());
