@@ -98,7 +98,7 @@ int generateRandomOxygen(int input) {
     // int range = 5;
     
     // Calculate the minimum and maximum oxygen level values
-    int min_oxygen = input - 10;
+    int min_oxygen = input - 5;
     int max_oxygen = input + 1;
     
     // Generate a random oxygen level within the range

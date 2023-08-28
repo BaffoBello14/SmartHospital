@@ -91,12 +91,14 @@ static int cardio = 60;  // Initial heart rate value
 
 static char new_id[6] = "c001";
 
+static int control = 0;
+
 int generateRandomCardio(int input) {
     // Define the range
     // int range = 10;
     
-    int rangeUp = 5;
-    int rangeDown = 20;
+    int rangeUp = 4;
+    int rangeDown = 13;
 
     // Calculate the minimum and maximum heart rate values
     int min_cardio = input - rangeDown;
@@ -106,6 +108,8 @@ int generateRandomCardio(int input) {
     int output = (rand() % (max_cardio - min_cardio + 1)) + min_cardio;
 
     if(output < 0) output = 0;
+
+    control = control + 1;
 
     return output;
 }

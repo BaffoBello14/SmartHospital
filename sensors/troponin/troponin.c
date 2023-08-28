@@ -95,10 +95,8 @@ static char new_id[6] = "t001";
 double generateRandomTroponin(int input) {
     // Define the range
     
-    int range = 1;
-    
     // Calculate the minimum and maximum heart rate values
-    int min_cardio = input - range;
+    int min_cardio = input - 1;
     int max_cardio = input + 4;
     
     // Generate a random heart rate within the range
