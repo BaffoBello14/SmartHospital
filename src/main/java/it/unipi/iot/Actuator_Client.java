@@ -20,7 +20,7 @@ public class Actuator_Client {
 
     public static String putMedicine(String ip, int isActive, int time)
     {
-        CoapClient client = new CoapClient("coap://[" + ip + "]/" +  "medicine/type");
+        CoapClient client = new CoapClient("coap://[" + ip + "]/" +  "medicine/quantity");
         JSONObject object = new JSONObject();
         object.put("level", isActive);
         object.put("time", time);
@@ -30,7 +30,20 @@ public class Actuator_Client {
             logger.log(Level.SEVERE, "An error occurred while contacting the actuator");
             throw new IllegalStateException("An error occurred while contacting the actuator");
         }
-        return "medicine/quantity";
+        CoAP.ResponseCode code = response.getCode();
+        switch (code) {
+            case CHANGED:
+                return "medicine/type";
+            case BAD_OPTION:
+                System.out.println("Errore attivazione attuatore: medicine");
+                logger.log(Level.SEVERE, "ERRORE NEL CAMBIO STATO");
+                return "";
+            case FORBIDDEN:
+                return "medicine/type";
+            default:
+                logger.log(Level.WARNING, "ERRORE DEFAULT");
+                return "";
+        }
     }
 
     public static boolean putClientRequest(String ip, String resource, int isActive, int time) throws SQLException, IllegalStateException 
@@ -43,6 +56,7 @@ public class Actuator_Client {
         if("medicine".equals(resource))
         {
             resource = putMedicine(ip, isActive, time);
+            if(resource.equals("")) return false;
         }
         
         CoapClient client = new CoapClient("coap://[" + ip + "]/" + resource);
@@ -50,6 +64,7 @@ public class Actuator_Client {
         object.put("level", isActive);
         object.put("time", time);
         // System.out.println(object);
+        if(resource.equals("medicine/type")) resource = "medicine";
     
         CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
     
@@ -69,6 +84,8 @@ public class Actuator_Client {
                 System.out.println("Errore attivazione attuatore: " + resource);
                 logger.log(Level.SEVERE, "ERRORE NEL CAMBIO STATO");
                 return false;
+            case FORBIDDEN:
+                return true;
             default:
                 logger.log(Level.WARNING, "ERRORE DEFAULT");
                 return false;
