@@ -17,6 +17,22 @@
         leds_on(current_leds);             // Accende i LED nello stato originale
         clock_delay(400);                  // Attendi
     }
+}
+
+void blink_led1() {
+    while (1) {
+        // Turn on LED1
+        leds_single_on(0);  // Assuming LED1 is at index 0
+
+        // Delay for the specified interval
+        clock_wait(CLOCK_SECOND * (500 / 1000));
+
+        // Turn off LED1
+        leds_set(LEDS_BLUE);
+
+        // Delay for the same interval
+        clock_wait(CLOCK_SECOND * (500 / 1000));
+    }
 }*/
 
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
@@ -73,12 +89,18 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
     }
 
     if(medicine_type == 0) {
+        leds_single_off(LEDS_LED1);
         LOG_INFO("MEDICINE OFF\n");
     } else if(medicine_type == 1 || medicine_type == 2) {
+        leds_single_off(LEDS_LED1);
         LOG_INFO("MEDICINE TYPE 1\n");
     } else if(medicine_type == 3 || medicine_type == 4) {
-        //leds_blink_current_color();
-        leds_set(LEDS_YELLOW);
+        // leds_blink_current_color();
+        // leds_set(LEDS_YELLOW);
+        // blink_led1(); // Call the blink_led1 function to make LED1 blink
+        // leds_blink();
+        // leds_set(LEDS_BLUE);
+        leds_single_on(LEDS_LED1);
         LOG_INFO("MEDICINE TYPE 2\n");
     } else {
         goto error;

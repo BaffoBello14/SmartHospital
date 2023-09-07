@@ -77,12 +77,12 @@ public class Actuator_Client {
         switch (code) {
             case CHANGED:
                 logger.log(Level.INFO, "STATO CAMBIATO CORRETTAMENTE");
-                System.out.println("Attuatore: " + resource + " attivato");
+                System.out.println("Attuatore: " + resource);
                 status.put(ip, isActive);
                 return true;
             case BAD_OPTION:
-                System.out.println("Errore attivazione attuatore: " + resource);
                 logger.log(Level.SEVERE, "ERRORE NEL CAMBIO STATO");
+                System.out.println("Attuatore: " + resource);  
                 return false;
             case FORBIDDEN:
                 return true;
