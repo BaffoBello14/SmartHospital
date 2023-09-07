@@ -10,11 +10,10 @@
 #define LOG_LEVEL LOG_LEVEL_DBG
 
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
-static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
 RESOURCE(res_oxygen,
          "title=\"Oxygen mask actuator\";rt=\"Control\"",
-         res_get_handler,
+         NULL,
          NULL,
          res_put_handler,
          NULL);
@@ -27,16 +26,6 @@ static void reset_request_ignore(void *ptr) {
     ignore_zero_time_requests = 0;
     oxygen_level = 0;
     leds_set(LEDS_COLOUR_NONE);
-}
-
-static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {
-    // Convert oxygen level to a string
-    char level_str[3];
-    snprintf(level_str, sizeof(level_str), "%d", oxygen_level);
-
-    // Set payload of the response to the current oxygen level
-    coap_set_payload(response, level_str, strlen(level_str));
-    coap_set_status_code(response, CONTENT_2_05);
 }
 
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {

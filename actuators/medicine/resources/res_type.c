@@ -9,7 +9,7 @@
 #define LOG_MODULE "res-type"
 #define LOG_LEVEL LOG_LEVEL_DBG
 
-void leds_blink_current_color(void) {
+/*void leds_blink_current_color(void) {
     leds_mask_t current_leds = leds_get();  // Ottieni lo stato corrente dei LED
     for(int i = 0; i < 3; i++) {            // Lampeggia 3 volte, puoi cambiare questo valore
         leds_off(LEDS_ALL);                // Spegne tutti i LED
@@ -17,14 +17,13 @@ void leds_blink_current_color(void) {
         leds_on(current_leds);             // Accende i LED nello stato originale
         clock_delay(400);                  // Attendi
     }
-}
+}*/
 
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
-static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
 
 RESOURCE(res_type,
          "title=\"Medicine's type\";rt=\"Control\"",
-         res_get_handler,
+         NULL,
          NULL,
          res_put_handler,
          NULL);
@@ -37,16 +36,6 @@ static void reset_request_ignore(void *ptr) {
     ignore_zero_time_requests = 0;
     medicine_type = 0;
     leds_set(LEDS_COLOUR_NONE);
-}
-
-static void res_get_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {
-    // Convert medicine type to a string
-    char type_str[2];
-    snprintf(type_str, sizeof(type_str), "%d", medicine_type);
-
-    // Set payload of the response to the current medicine type
-    coap_set_payload(response, type_str, strlen(type_str));
-    coap_set_status_code(response, CONTENT_2_05);
 }
 
 static void res_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset) {
@@ -88,7 +77,8 @@ static void res_put_handler(coap_message_t *request, coap_message_t *response, u
     } else if(medicine_type == 1 || medicine_type == 2) {
         LOG_INFO("MEDICINE TYPE 1\n");
     } else if(medicine_type == 3 || medicine_type == 4) {
-        leds_blink_current_color();
+        //leds_blink_current_color();
+        leds_set(LEDS_YELLOW);
         LOG_INFO("MEDICINE TYPE 2\n");
     } else {
         goto error;
