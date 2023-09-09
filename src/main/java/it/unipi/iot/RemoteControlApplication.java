@@ -26,7 +26,6 @@ public class RemoteControlApplication implements Runnable {
     private static final RemoteControlApplication instance = new RemoteControlApplication();
 
     String[] attuatori = new String[3];
-    // static HashMap<String, String[]> pazienti = new HashMap<>();
     private static HashMap<String, String[]> pazienti = new HashMap<>();
 
     public static RemoteControlApplication getInstance() {
@@ -52,7 +51,6 @@ public class RemoteControlApplication implements Runnable {
 
     public String getAvailableActuators() {
         try {
-            // Replace this with your actual DB query code
             List<String> availableActuators = DB.queryActuatorsWithStatus(0);
             return String.join(", ", availableActuators);
         } catch (SQLException e) {
@@ -79,23 +77,6 @@ public class RemoteControlApplication implements Runnable {
             }
         }
     
-        return sb.toString();
-    }
-
-    public String printPazienti()
-    {
-        StringBuilder sb = new StringBuilder("");
-        for(String idPaziente : pazienti.keySet())
-        {
-            int index = 0;
-            for(String attuatore : pazienti.get(idPaziente))
-            {
-                String status = "INATTIVO";
-                if(!attuatore.isEmpty())
-                    status = "ON";
-                sb.append(" ATTUATORE: "+ retrieveActuatorType(index)+" STATO: ");
-            }
-        }
         return sb.toString();
     }
     
@@ -206,7 +187,6 @@ public class RemoteControlApplication implements Runnable {
 
     public String retrieveActuatorIP(String patient_id, int index) throws SQLException 
     {
-        // String type = retrieveActuatorType(index);
         String ip = DB.retrieveActuatorIP(retrieveActuatorType(index));
         if (!ip.isEmpty()) 
         {
@@ -321,8 +301,6 @@ public class RemoteControlApplication implements Runnable {
                     continue;  // Vai al prossimo paziente se non ci sono dati per questo
                 }
     
-                //System.out.println("Data for patient " + patientId + ": " + sensorValues);
-    
                 // Oxygen
                 int value = sensorValues.get(0) <= DNG_OX_TH ? 2 : sensorValues.get(0) <= CTR_OX_TH ? 1 : 0;
                 if(value == 0 && (!pazienti.containsKey(patientId) || "".equals(pazienti.get(patientId)[0]))){
@@ -361,53 +339,6 @@ public class RemoteControlApplication implements Runnable {
                         {
                             System.out.println("DEFIBRILLO NON ATTIVATO\n");
                         }
-                        /*
-                        String[] patientData = pazienti.get(patientId);
-                        if (patientData == null) {
-                            // Add new patient to the map
-                            System.out.println("PATIENT DATA VUOTI");
-                            boolean actuator1 = changeActuatorStatus(patientId, 1, value);
-                            boolean actuator2 = changeActuatorStatus(patientId, 2, value);
-                            if (!actuator1 && value < 3) {
-                                System.out.println("Call the doctor!!! (heart desease)");
-                            }
-                            else if (!actuator2 && value < 4) {
-                                changeActuatorStatus(patientId, 2, value + 1);
-                            }
-                        }
-                        else
-                        {
-                            boolean actuator1 = "".equals(pazienti.get(patientId)[1]) || changeActuatorStatus(patientId, 1, value);
-                            boolean actuator2 = "".equals(pazienti.get(patientId)[2]) || changeActuatorStatus(patientId, 2, value);
-                            if (!actuator1 && value < 3) {
-                                System.out.println("Call the doctor!!! (heart desease)");
-                            }
-                            else if (!actuator2 && value < 4) {
-                                changeActuatorStatus(patientId, 2, value + 1);
-                            }
-                        }
-                        System.out.println("VALUE= "+value);
-                        String patientAc1 = pazienti.get(patientId)[1];
-                        String patientAc2 = pazienti.get(patientId)[2];
-                        if(patientAc1.isEmpty())
-                        {
-                            System.out.println("ACTUATOR 1 VUOTO");
-                        }
-                        if(patientAc2.isEmpty())
-                        {
-                            System.out.println("ACTUATOR 2 VUOTO");
-                        }
-                        System.out.println("ACTUATOR 1: "+patientAc1);
-                        System.out.println("ACTUATOR 2: "+patientAc2);
-                        boolean actuator1 = "".equals(pazienti.get(patientId)[1]) || changeActuatorStatus(patientId, 1, value);
-                        boolean actuator2 = "".equals(pazienti.get(patientId)[2]) || changeActuatorStatus(patientId, 2, value);
-                        if (!actuator1 && value < 3) {
-                            System.out.println("Call the doctor!!! (heart desease)");
-                        }
-                        else if (!actuator2 && value < 4) {
-                            changeActuatorStatus(patientId, 2, value + 1);
-                        }
-                        */
                     }
                 }
 

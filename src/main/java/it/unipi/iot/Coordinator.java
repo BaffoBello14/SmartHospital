@@ -88,7 +88,6 @@ public class Coordinator implements MqttCallback, Runnable {
             MqttClient mqttClient = new MqttClient(MQTT_BROKER, clientId);
             mqttClient.setCallback(this);
             mqttClient.connect();
-            // System.out.println("connessione ok\n");
             return mqttClient;
         } catch (MqttException e) {
             e.printStackTrace();

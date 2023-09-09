@@ -93,10 +93,7 @@ static char new_id[6] = "c001";
 
 static int control = 0;
 
-int generateRandomCardio(int input) {
-    // Define the range
-    // int range = 10;
-    
+int generateRandomCardio(int input) {    
     int rangeUp = 4;
     int rangeDown = 13;
 

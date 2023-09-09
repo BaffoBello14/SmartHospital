@@ -24,7 +24,6 @@ public class Actuator_Client {
         JSONObject object = new JSONObject();
         object.put("level", isActive);
         object.put("time", time);
-        // System.out.println(object);
         CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);
         if (response == null) {
             logger.log(Level.SEVERE, "An error occurred while contacting the actuator");
@@ -49,6 +48,11 @@ public class Actuator_Client {
     public static boolean putClientRequest(String ip, String resource, int isActive, int time) throws SQLException, IllegalStateException 
     {
         int stato = localCheck(ip);
+        if("defibrillator".equals(resource)){
+            if(stato == isActive || (stato >= 0 && stato <=2 && isActive >= 0 && isActive <=2)){
+                return true;
+            }
+        }
         if(stato==isActive)
         {
             return true;
@@ -63,7 +67,6 @@ public class Actuator_Client {
         JSONObject object = new JSONObject();
         object.put("level", isActive);
         object.put("time", time);
-        // System.out.println(object);
         if(resource.equals("medicine/type")) resource = "medicine";
     
         CoapResponse response = client.put(object.toJSONString().replace("\"",""), MediaTypeRegistry.APPLICATION_JSON);

@@ -94,9 +94,6 @@ static int oxygen = 99;  // Initial oxygen level value
 static char new_id[6] = "o001";
 
 int generateRandomOxygen(int input) {
-    // Define the range
-    // int range = 5;
-    
     // Calculate the minimum and maximum oxygen level values
     int min_oxygen = input - 5;
     int max_oxygen = input + 1;

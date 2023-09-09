@@ -93,8 +93,6 @@ static int troponin = 10;
 static char new_id[6] = "t001";
 
 double generateRandomTroponin(int input) {
-    // Define the range
-    
     // Calculate the minimum and maximum heart rate values
     int min_cardio = input - 1;
     int max_cardio = input + 4;
@@ -220,13 +218,10 @@ PROCESS_THREAD(troponin_process, ev, data)
       }
 
       if(state == STATE_SUBSCRIBED){
-        // Publish something
-        // sprintf(pub_topic, "%s", "troponin");
         sprintf(pub_topic, "troponin");
 
         troponin = generateRandomTroponin(troponin);
 
-        // sprintf(app_buffer, "{\"id\": \"%s\", \"value\": %.2lf}", new_id, troponin);
         sprintf(app_buffer, "{\"id\": \"%s\", \"value\": %d}", new_id, troponin);
         
         printf("Publishing: %s \n", app_buffer);
