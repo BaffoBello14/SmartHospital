@@ -1,13 +1,14 @@
-mqtt_sensor/build
-rpl-border-router/build
-.vscode
+# VS Code settings
+.vscode/
+
+# Build directories
+mqtt_sensor/build/
+rpl-border-router/build/
+actuators/*/build/
+sensors/*/build/
+
+# Specific files or directories
 tcp*
 smartmed*
 target
-actuators/build
-sensors/oxygen/build
-sensors/cardio/build
-sensors/troponin/build
-actuators/mask/build
-actuators/medicine/build
-actuators/defibrillator/build
+inutilizzata/
