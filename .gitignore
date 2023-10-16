@@ -2,7 +2,7 @@
 .vscode/
 
 # Build directories
-mqtt_sensor/build/
+sensors/build/
 rpl-border-router/build/
 actuators/*/build/
 sensors/*/build/
@@ -11,4 +11,4 @@ sensors/*/build/
 tcp*
 smartmed*
 target
-inutilizzata/
+inutilizzata
