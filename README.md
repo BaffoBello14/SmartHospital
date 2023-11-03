@@ -1,6 +1,6 @@
-# Smart Hospital - Internet of Things Project (A.Y. 2022/2023)
+# Smart Hospital
 
-Welcome to the Smart Hospital project! This project leverages the Internet of Things (IoT) to create a smart hospital environment for the academic year 2022/2023.
+Welcome to the Smart Hospital project for the Internet of Things (IoT) course at the University of Pisa, as part of the "Artificial Intelligence and Data Engineering" program in the academic year 2022/2023.
 
 ## Getting Started
 
@@ -22,7 +22,7 @@ Follow these steps to run the Smart Hospital application:
 
 8. Execute 'execute_all.sh.'
 
-This will not only run the dongles but also start the Java application, create, and initialize the mysql database.
+This will not only run the dongles but also start the Java application, create, and initialize the database.
 
 ## About the Project
 
